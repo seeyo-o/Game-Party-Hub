@@ -503,6 +503,12 @@ const DB = (function () {
               updatedAt: Date.now()
             });
           }
+          if (gameKey === 'secretHitler' || gameKey === 'secret-hitler') {
+            await dbInstance.ref(`rooms/${code}/secretHitlerGame`).update({
+              ...partialState,
+              updatedAt: Date.now()
+            });
+          }
         } else {
           const raw = localStorage.getItem(`mock_room_${code}`);
           if (raw) {
@@ -559,6 +565,13 @@ const DB = (function () {
             if (gameKey === 'trio') {
               roomData.trioGame = {
                 ...(roomData.trioGame || {}),
+                ...partialState,
+                updatedAt: Date.now()
+              };
+            }
+            if (gameKey === 'secretHitler' || gameKey === 'secret-hitler') {
+              roomData.secretHitlerGame = {
+                ...(roomData.secretHitlerGame || {}),
                 ...partialState,
                 updatedAt: Date.now()
               };
