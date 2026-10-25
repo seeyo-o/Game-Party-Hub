@@ -497,6 +497,12 @@ const DB = (function () {
               updatedAt: Date.now()
             });
           }
+          if (gameKey === 'trio') {
+            await dbInstance.ref(`rooms/${code}/trioGame`).update({
+              ...partialState,
+              updatedAt: Date.now()
+            });
+          }
         } else {
           const raw = localStorage.getItem(`mock_room_${code}`);
           if (raw) {
@@ -546,6 +552,13 @@ const DB = (function () {
             if (gameKey === 'spicy') {
               roomData.spicyGame = {
                 ...(roomData.spicyGame || {}),
+                ...partialState,
+                updatedAt: Date.now()
+              };
+            }
+            if (gameKey === 'trio') {
+              roomData.trioGame = {
+                ...(roomData.trioGame || {}),
                 ...partialState,
                 updatedAt: Date.now()
               };
