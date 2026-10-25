@@ -91,6 +91,54 @@ body[data-theme="guess-who"] {
   --theme-gradient: linear-gradient(135deg, #0284C7 0%, #8B5CF6 100%);
 }
 
+/* 5. WEREWOLF THEME ("Werewolf: Dusk of Deception") */
+body[data-theme="werewolf"] {
+  --color-bg: #F3F1FF;           /* Soft Lavender Dusk */
+  --color-surface: #FFFFFF;
+  --color-primary: #4F46E5;       /* Indigo Night */
+  --color-primary-hover: #4338CA;
+  --color-primary-light: #EEF2FF;
+  --color-accent: #F59E0B;        /* Moon Amber */
+  --color-accent-hover: #D97706;
+  --color-text: #1E1B4B;
+  --color-muted: #6366F1;
+  --color-border: rgba(79, 70, 229, 0.16);
+  --color-ring: rgba(79, 70, 229, 0.25);
+  --theme-gradient: linear-gradient(135deg, #4F46E5 0%, #F59E0B 100%);
+}
+
+/* 6. COUP THEME ("Coup: Kudeta Kota Dystopia") */
+body[data-theme="coup"] {
+  --color-bg: #FFFBEB;           /* Warm Gold Cream */
+  --color-surface: #FFFFFF;
+  --color-primary: #D97706;       /* Royal Amber */
+  --color-primary-hover: #B45309;
+  --color-primary-light: #FEF3C7;
+  --color-accent: #E11D48;        /* Crimson Velvet */
+  --color-accent-hover: #BE123C;
+  --color-text: #451A03;
+  --color-muted: #92400E;
+  --color-border: rgba(217, 119, 6, 0.16);
+  --color-ring: rgba(217, 119, 6, 0.25);
+  --theme-gradient: linear-gradient(135deg, #D97706 0%, #E11D48 100%);
+}
+
+/* 7. COSTUME DETECTIVE THEME ("Costume Party Detective") */
+body[data-theme="costume-detective"] {
+  --color-bg: #F0FDFA;           /* Mystery Mint */
+  --color-surface: #FFFFFF;
+  --color-primary: #0D9488;       /* Teal Detective */
+  --color-primary-hover: #0F766E;
+  --color-primary-light: #CCFBF1;
+  --color-accent: #7C3AED;        /* Costume Violet */
+  --color-accent-hover: #6D28D9;
+  --color-text: #042F2E;
+  --color-muted: #115E59;
+  --color-border: rgba(13, 148, 136, 0.16);
+  --color-ring: rgba(13, 148, 136, 0.25);
+  --theme-gradient: linear-gradient(135deg, #0D9488 0%, #7C3AED 100%);
+}
+
 /* ==========================================================================
    BASE & TYPOGRAPHY
    ========================================================================== */

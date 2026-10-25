@@ -47,6 +47,39 @@ const App = (function () {
       theme: 'guess-who',
       colorClasses: 'from-sky-500/10 to-violet-500/10 border-sky-300 text-sky-900',
       description: 'Lontarkan pertanyaan YA atau TIDAK untuk menebak karakter misterius pemain lain sebelum waktumu habis.'
+    },
+    {
+      id: 'werewolf',
+      title: 'Werewolf',
+      subtitle: 'Dusk of Deception (Moderator Otomatis)',
+      badge: 'PANDUAN SIAP',
+      badgeVariant: 'warning',
+      icon: 'moon',
+      theme: 'werewolf',
+      colorClasses: 'from-indigo-500/10 to-purple-500/10 border-indigo-300 text-indigo-900',
+      description: 'Deduksi malam & siang tanpa perlu moderator manual. Werewolf memangsa, Seer menerawang, dan warga berunding di siang hari.'
+    },
+    {
+      id: 'coup',
+      title: 'Coup',
+      subtitle: 'Kudeta Kota Dystopia (Bluffing)',
+      badge: 'PANDUAN SIAP',
+      badgeVariant: 'warning',
+      icon: 'crown',
+      theme: 'coup',
+      colorClasses: 'from-amber-500/10 to-rose-500/10 border-amber-300 text-amber-900',
+      description: 'Gertakan kartu bangsawan, manipulasi pajak, dan kudeta politik. Bebas mengaku punya kartu apapun asalkan tidak ketahuan!'
+    },
+    {
+      id: 'costume-detective',
+      title: 'Costume Party Detective',
+      subtitle: 'Misteri Pesta Topeng 6 Ruangan',
+      badge: 'PANDUAN SIAP',
+      badgeVariant: 'warning',
+      icon: 'glasses',
+      theme: 'costume-detective',
+      colorClasses: 'from-teal-500/10 to-violet-500/10 border-teal-300 text-teal-900',
+      description: 'Sembunyikan identitas kostummu di antara 6 ruangan pesta, gerakkan karakter untuk mengecoh lawan, dan tebak samaran mereka.'
     }
   ];
 
@@ -133,6 +166,10 @@ const App = (function () {
         GuessWhoGame.onStateChange(currentRoom);
       }
       GuessWhoGame.render(appEl, currentRoom, currentPlayer);
+    } else if (['werewolf', 'coup', 'costume-detective'].includes(gameMode)) {
+      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
+      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
+      renderUpcomingGameView(gameMode);
     }
   }
 
@@ -210,37 +247,167 @@ const App = (function () {
       </div>
     `;
 
-    // Feature preview cards
+    // Feature preview cards - 6 Games Interactive Grid
     const featureCardsHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-        <div class="p-5 rounded-3xl bg-white/80 border-2 border-slate-900/5 shadow-sm hover:shadow-md transition-all">
-          <div class="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mb-3">
-            <i data-lucide="heart" class="w-5 h-5"></i>
+      <div class="mt-8">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-4 h-4 text-indigo-600"></i>
+            <h3 class="font-display font-black text-sm uppercase tracking-wider text-slate-700">Pilihan Game Party Tongkrongan</h3>
           </div>
-          <h4 class="font-display font-bold text-base text-slate-800">Tentang Kita</h4>
-          <p class="font-body text-xs text-slate-500 mt-1">48 Kartu deep talk, uneg-uneg, dan tantangan spontan discord.</p>
+          <span class="text-xs font-display font-semibold text-slate-400">6 Game Tersedia</span>
         </div>
 
-        <div class="p-5 rounded-3xl bg-white/80 border-2 border-slate-900/5 shadow-sm hover:shadow-md transition-all">
-          <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
-            <i data-lucide="vote" class="w-5 h-5"></i>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- 1. Tentang Kita -->
+          <div 
+            onclick="GameRules.open('tentang-kita', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-rose-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Tentang Kita"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-display font-bold">
+                  Deep Talk
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-rose-600 transition-colors">Tentang Kita</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">48 Kartu deep talk, uneg-uneg, dan tantangan spontan discord.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-rose-600 group-hover:text-rose-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
           </div>
-          <h4 class="font-display font-bold text-base text-slate-800">The Voting Game</h4>
-          <p class="font-body text-xs text-slate-500 mt-1">Tebak siapa yang paling mungkin melakukan hal gila di tongkrongan.</p>
-        </div>
 
-        <div class="p-5 rounded-3xl bg-white/80 border-2 border-slate-900/5 shadow-sm hover:shadow-md transition-all">
-          <div class="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center mb-3">
-            <i data-lucide="user-search" class="w-5 h-5"></i>
+          <!-- 2. The Voting Game -->
+          <div 
+            onclick="GameRules.open('voting', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain The Voting Game"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="vote" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-display font-bold">
+                  Bongkar Rahasia
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-emerald-600 transition-colors">The Voting Game</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Tebak siapa yang paling mungkin melakukan hal gila di tongkrongan.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-emerald-600 group-hover:text-emerald-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
           </div>
-          <h4 class="font-display font-bold text-base text-slate-800">Guess Who?</h4>
-          <p class="font-body text-xs text-slate-500 mt-1">Eliminasi karakter misterius dengan logika pertanyaan cepat.</p>
+
+          <!-- 3. Guess Who? -->
+          <div 
+            onclick="GameRules.open('guess-who', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-sky-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Guess Who?"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="user-search" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-display font-bold">
+                  Battle Royale
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-sky-600 transition-colors">Guess Who?</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Eliminasi karakter misterius dengan logika pertanyaan cepat.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-sky-600 group-hover:text-sky-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- 4. Werewolf -->
+          <div 
+            onclick="GameRules.open('werewolf', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Werewolf"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="moon" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-display font-bold">
+                  Deduksi Malam
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-indigo-600 transition-colors">Werewolf</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Deduksi malam & siang tanpa perlu moderator manual.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-indigo-600 group-hover:text-indigo-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- 5. Coup -->
+          <div 
+            onclick="GameRules.open('coup', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-amber-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Coup"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="crown" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-display font-bold">
+                  Gertakan & Kudeta
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-amber-600 transition-colors">Coup</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Gertakan kartu bangsawan, pajak, dan kudeta.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-amber-600 group-hover:text-amber-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- 6. Costume Party Detective -->
+          <div 
+            onclick="GameRules.open('costume-detective', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-teal-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Costume Party Detective"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-teal-100 text-teal-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="glasses" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-[10px] font-display font-bold">
+                  Misteri Topeng
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-teal-600 transition-colors">Costume Party Detective</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Sembunyikan identitas kostummu di antara 6 ruangan.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-teal-600 group-hover:text-teal-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
         </div>
       </div>
     `;
 
     const fullHTML = `
-      <div class="w-full max-w-3xl mx-auto my-auto py-6">
+      <div class="w-full max-w-5xl mx-auto my-auto py-6">
         <!-- Top App Bar -->
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-3">
@@ -321,7 +488,7 @@ const App = (function () {
       return `
         <div 
           ${selectAction}
-          class="p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer select-none ${borderClass} relative flex items-start gap-3 sm:gap-4"
+          class="p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer select-none ${borderClass} relative flex items-start gap-3 sm:gap-4 group"
         >
           <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${game.colorClasses} border flex items-center justify-center shrink-0">
             <i data-lucide="${game.icon}" class="w-6 h-6"></i>
@@ -330,6 +497,14 @@ const App = (function () {
             <div class="flex items-center gap-2 mb-1">
               <h4 class="font-display font-bold text-base text-slate-900">${game.title}</h4>
               ${UI.Badge({ text: game.badge, variant: game.badgeVariant })}
+              <button 
+                onclick="event.stopPropagation(); GameRules.open('${game.id}', 'lobby')"
+                class="ml-auto px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-500 text-[10px] font-display font-bold flex items-center gap-1 transition-all cursor-pointer"
+                title="Buka Cara Bermain ${game.title}"
+              >
+                <i data-lucide="book-open" class="w-3 h-3"></i>
+                <span>Panduan</span>
+              </button>
             </div>
             <p class="font-body text-xs text-slate-500 line-clamp-2 leading-relaxed">${game.description}</p>
           </div>
@@ -414,10 +589,20 @@ const App = (function () {
                   <i data-lucide="gamepad-2" class="w-5 h-5 text-indigo-600"></i>
                   <h3 class="font-display font-bold text-base text-slate-800">Pilih Game Party</h3>
                 </div>
-                ${isHost 
-                  ? '<span class="text-xs font-display font-semibold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">👑 Khusus Host</span>' 
-                  : '<span class="text-xs font-display font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">Menunggu Host...</span>'
-                }
+                <div class="flex items-center gap-2">
+                  <button 
+                    onclick="GameRules.open(App.getSelectedGame(), 'lobby')" 
+                    class="px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-display font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                    title="Buka Panduan & Aturan Permainan"
+                  >
+                    <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                    <span>📖 Panduan</span>
+                  </button>
+                  ${isHost 
+                    ? '<span class="text-xs font-display font-semibold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">👑 Khusus Host</span>' 
+                    : '<span class="text-xs font-display font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">Menunggu Host...</span>'
+                  }
+                </div>
               </div>
 
               <div class="space-y-3">
@@ -450,6 +635,85 @@ const App = (function () {
     `;
 
     appEl.innerHTML = lobbyContent;
+    UI.refreshIcons();
+  }
+
+  /**
+   * ==========================================================================
+   * VIEW 3: UPCOMING GAME STAGING & DISCORD PLAY SCREEN
+   * ==========================================================================
+   */
+  function renderUpcomingGameView(gameMode) {
+    const appEl = document.getElementById('app');
+    if (!appEl || !currentRoom) return;
+
+    const game = GAME_CATALOG.find(g => g.id === gameMode) || GAME_CATALOG[0];
+    const isHost = currentPlayer && currentPlayer.isHost;
+
+    const contentHTML = `
+      <div class="max-w-xl mx-auto py-6 text-center space-y-6">
+        <div class="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br ${game.colorClasses} border-2 flex items-center justify-center shadow-lg">
+          <i data-lucide="${game.icon}" class="w-10 h-10"></i>
+        </div>
+
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-xs font-display font-bold mb-2">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span>Panduan & Aturan Siap Dimainkan!</span>
+          </div>
+          <h2 class="font-display font-black text-2xl sm:text-3xl text-slate-900">${game.title}</h2>
+          <p class="font-body text-xs sm:text-sm text-slate-600 mt-2 max-w-md mx-auto leading-relaxed">
+            ${game.description}
+          </p>
+        </div>
+
+        <div class="p-5 rounded-3xl bg-white/80 border-2 border-slate-900/5 shadow-sm text-left space-y-3">
+          <h4 class="font-display font-bold text-sm text-slate-800 flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4 text-indigo-600"></i>
+            <span>Bisa Langsung Dimainkan di Discord!</span>
+          </h4>
+          <p class="font-body text-xs text-slate-500 leading-relaxed">
+            Modul papan interaktif game ini sedang dalam tahap perakitan otomatis. Namun kamu dan teman-temanmu di Voice Chat Discord sudah bisa memainkannya secara seru menggunakan <b>Panduan Lengkap, Peran, & Aturan</b> resmi kami.
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button 
+            onclick="GameRules.open('${game.id}', 'lobby')"
+            class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-bold text-sm shadow-lg shadow-indigo-600/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="book-open" class="w-4 h-4"></i>
+            <span>Buka Panduan & Cara Bermain 📖</span>
+          </button>
+
+          <button 
+            onclick="App.returnToLobby()"
+            class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-display font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>${isHost ? 'Kembali ke Lobby (Pilih Game Lain)' : 'Kembali ke Lobby'}</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    appEl.innerHTML = `
+      <div class="w-full max-w-3xl mx-auto py-6">
+        ${UI.Container({
+          title: `${game.title} 🎲`,
+          subtitle: game.subtitle,
+          icon: game.icon,
+          content: contentHTML
+        })}
+      </div>
+    `;
+
+    // Sinkronkan juga kontainer staging terpisah jika dibutuhkan
+    const stagingEl = document.getElementById(`${gameMode}-view`);
+    if (stagingEl) {
+      stagingEl.innerHTML = contentHTML;
+    }
+
     UI.refreshIcons();
   }
 
@@ -689,7 +953,9 @@ const App = (function () {
     openSettingsModal,
     saveFirebaseSettings,
     resetToDemoConfig,
-    renderLobbyView
+    renderLobbyView,
+    openGameRules: (id, ctx) => GameRules.open(id, ctx),
+    getSelectedGame: () => selectedGameToLaunch
   };
 })();
 
