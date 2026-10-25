@@ -24,7 +24,7 @@ const App = (function () {
       icon: 'heart-handshake',
       theme: 'tentang-kita',
       colorClasses: 'from-rose-500/10 to-amber-500/10 border-rose-300 text-rose-900',
-      description: '48 kartu penuh obrolan hangat, opini tidak populer, dan tantangan spontan yang dirancang untuk mempererat tongkrongan Discord.'
+      description: '175 kartu penuh obrolan hangat, opini tidak populer, dan tantangan spontan yang dirancang untuk mempererat tongkrongan Discord.'
     },
     {
       id: 'voting',
@@ -400,7 +400,7 @@ const App = (function () {
                 </span>
               </div>
               <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-rose-600 transition-colors">Tentang Kita</h4>
-              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">48 Kartu deep talk, uneg-uneg, dan tantangan spontan discord.</p>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">175 Kartu deep talk, uneg-uneg, dan tantangan spontan discord.</p>
             </div>
             <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-rose-600 group-hover:text-rose-700">
               <span>📖 Klik untuk Cara Bermain</span>
