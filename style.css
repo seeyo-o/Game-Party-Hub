@@ -1,0 +1,268 @@
+/* ==========================================================================
+   DISCORD PARTY HUB - GLOBAL STYLES & THEME VARIABLES
+   ========================================================================== */
+
+/* Google Fonts are loaded via HTML link for optimal performance:
+   - 'Fredoka': Headings, numbers, joyful accents
+   - 'Plus Jakarta Sans': Body copy, UI labels, buttons
+*/
+
+:root {
+  /* Default Lobby Palette (Indigo & Coral) */
+  --color-bg: #FAF8F5;
+  --color-surface: #FFFFFF;
+  --color-primary: #6366F1;
+  --color-primary-hover: #4F46E5;
+  --color-primary-light: #EEF2FF;
+  --color-accent: #FB7185;
+  --color-accent-hover: #F43F5E;
+  --color-text: #0F172A;
+  --color-muted: #64748B;
+  --color-border: rgba(15, 23, 42, 0.08);
+  --color-ring: rgba(99, 102, 241, 0.25);
+  --theme-gradient: linear-gradient(135deg, #6366F1 0%, #FB7185 100%);
+}
+
+/* ==========================================================================
+   THEME PALETTES (Controlled via body[data-theme="..."])
+   ========================================================================== */
+
+/* 1. LOBBY THEME */
+body[data-theme="lobby"] {
+  --color-bg: #FAF8F5;
+  --color-surface: #FFFFFF;
+  --color-primary: #6366F1;       /* Indigo */
+  --color-primary-hover: #4F46E5;
+  --color-primary-light: #EEF2FF;
+  --color-accent: #FB7185;        /* Coral */
+  --color-accent-hover: #F43F5E;
+  --color-text: #0F172A;
+  --color-muted: #64748B;
+  --color-border: rgba(99, 102, 241, 0.14);
+  --color-ring: rgba(99, 102, 241, 0.25);
+  --theme-gradient: linear-gradient(135deg, #6366F1 0%, #FB7185 100%);
+}
+
+/* 2. TENTANG KITA THEME */
+body[data-theme="tentang-kita"] {
+  --color-bg: #FFF7F5;
+  --color-surface: #FFFFFF;
+  --color-primary: #E11D48;       /* Terracotta Rose */
+  --color-primary-hover: #BE123C;
+  --color-primary-light: #FFF1F2;
+  --color-accent: #F59E0B;        /* Amber */
+  --color-accent-hover: #D97706;
+  --color-text: #1C1917;
+  --color-muted: #78716C;
+  --color-border: rgba(225, 29, 72, 0.16);
+  --color-ring: rgba(225, 29, 72, 0.25);
+  --theme-gradient: linear-gradient(135deg, #E11D48 0%, #F59E0B 100%);
+}
+
+/* 3. THE VOTING GAME THEME ("Siapa di Antara Kita") */
+body[data-theme="voting"] {
+  --color-bg: #F2FBF7;
+  --color-surface: #FFFFFF;
+  --color-primary: #10B981;       /* Emerald */
+  --color-primary-hover: #059669;
+  --color-primary-light: #ECFDF5;
+  --color-accent: #FACC15;        /* Sunny Yellow */
+  --color-accent-hover: #EAB308;
+  --color-text: #064E3B;
+  --color-muted: #047857;
+  --color-border: rgba(16, 185, 129, 0.16);
+  --color-ring: rgba(16, 185, 129, 0.25);
+  --theme-gradient: linear-gradient(135deg, #10B981 0%, #FACC15 100%);
+}
+
+/* 4. GUESS WHO THEME ("Guess Who? Battle Royale") */
+body[data-theme="guess-who"] {
+  --color-bg: #F0F7FF;
+  --color-surface: #FFFFFF;
+  --color-primary: #0284C7;       /* Sky Blue */
+  --color-primary-hover: #0369A1;
+  --color-primary-light: #F0F9FF;
+  --color-accent: #8B5CF6;        /* Violet */
+  --color-accent-hover: #7C3AED;
+  --color-text: #0F172A;
+  --color-muted: #475569;
+  --color-border: rgba(2, 132, 199, 0.16);
+  --color-ring: rgba(2, 132, 199, 0.25);
+  --theme-gradient: linear-gradient(135deg, #0284C7 0%, #8B5CF6 100%);
+}
+
+/* ==========================================================================
+   BASE & TYPOGRAPHY
+   ========================================================================== */
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  transition: background-color 0.4s ease, color 0.3s ease;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.font-display {
+  font-family: 'Fredoka', cursive, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.font-body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Dynamic theme helpers */
+.bg-theme-bg { background-color: var(--color-bg); }
+.bg-theme-surface { background-color: var(--color-surface); }
+.bg-theme-primary { background-color: var(--color-primary); }
+.bg-theme-primary-hover:hover { background-color: var(--color-primary-hover); }
+.bg-theme-primary-light { background-color: var(--color-primary-light); }
+.bg-theme-accent { background-color: var(--color-accent); }
+.text-theme-primary { color: var(--color-primary); }
+.text-theme-accent { color: var(--color-accent); }
+.text-theme-muted { color: var(--color-muted); }
+.border-theme { border-color: var(--color-border); }
+.ring-theme:focus { --tw-ring-color: var(--color-ring); }
+
+/* ==========================================================================
+   3D CARD FLIP ANIMATION
+   ========================================================================== */
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.card-flip-inner {
+  transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+.card-flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Card Glow Effect */
+.card-glow {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 
+              0 20px 25px -5px rgba(0, 0, 0, 0.04);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.card-glow:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.12),
+              0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+/* ==========================================================================
+   SPINNER & ROULETTE HIGHLIGHT ANIMATION
+   ========================================================================== */
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 16px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.roulette-active {
+  animation: pulse-ring 0.6s infinite;
+  border-color: var(--color-accent) !important;
+  background-color: #FEF3C7 !important;
+  color: #92400E !important;
+  transform: scale(1.06);
+  z-index: 20;
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: float-subtle 4s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   JOYFUL TOAST ANIMATION
+   ========================================================================== */
+
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-leave {
+  animation: toast-out 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ==========================================================================
+   CUSTOM SCROLLBAR
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.4);
+}
