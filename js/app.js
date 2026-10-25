@@ -52,8 +52,8 @@ const App = (function () {
       id: 'werewolf',
       title: 'Werewolf',
       subtitle: 'Dusk of Deception (Moderator Otomatis)',
-      badge: 'PANDUAN SIAP',
-      badgeVariant: 'warning',
+      badge: 'SIAP DIMAINKAN',
+      badgeVariant: 'accent',
       icon: 'moon',
       theme: 'werewolf',
       colorClasses: 'from-indigo-500/10 to-purple-500/10 border-indigo-300 text-indigo-900',
@@ -149,26 +149,38 @@ const App = (function () {
     if (gameMode === 'lobby') {
       if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
       if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
+      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
       renderLobbyView();
     } else if (gameMode === 'tentang-kita') {
       if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
       if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
+      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
       TentangKitaGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'voting') {
       if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
+      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
       if (typeof VotingGame.onStateChange === 'function') {
         VotingGame.onStateChange(currentRoom);
       }
       VotingGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'guess-who') {
       if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
+      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
       if (typeof GuessWhoGame.onStateChange === 'function') {
         GuessWhoGame.onStateChange(currentRoom);
       }
       GuessWhoGame.render(appEl, currentRoom, currentPlayer);
-    } else if (['werewolf', 'coup', 'costume-detective'].includes(gameMode)) {
+    } else if (gameMode === 'werewolf') {
       if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
       if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
+      if (typeof WerewolfGame.onStateChange === 'function') {
+        WerewolfGame.onStateChange(currentRoom);
+      }
+      WerewolfGame.render(appEl, currentRoom, currentPlayer);
+    } else if (['coup', 'costume-detective'].includes(gameMode)) {
+      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
+      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
+      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
       renderUpcomingGameView(gameMode);
     }
   }

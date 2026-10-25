@@ -473,6 +473,12 @@ const DB = (function () {
               updatedAt: Date.now()
             });
           }
+          if (gameKey === 'werewolf') {
+            await dbInstance.ref(`rooms/${code}/werewolfGame`).update({
+              ...partialState,
+              updatedAt: Date.now()
+            });
+          }
         } else {
           const raw = localStorage.getItem(`mock_room_${code}`);
           if (raw) {
@@ -494,6 +500,13 @@ const DB = (function () {
             if (gameKey === 'guessWho') {
               roomData.guessWhoGame = {
                 ...(roomData.guessWhoGame || {}),
+                ...partialState,
+                updatedAt: Date.now()
+              };
+            }
+            if (gameKey === 'werewolf') {
+              roomData.werewolfGame = {
+                ...(roomData.werewolfGame || {}),
                 ...partialState,
                 updatedAt: Date.now()
               };
