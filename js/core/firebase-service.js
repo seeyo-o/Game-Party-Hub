@@ -147,21 +147,31 @@ const DB = (function () {
     },
 
     /**
-     * Save current player session
+     * Save current player session to localStorage for robust reconnection
      */
     savePlayerSession(player) {
       try {
-        sessionStorage.setItem(STORAGE_KEY_PLAYER, JSON.stringify(player));
+        localStorage.setItem(STORAGE_KEY_PLAYER, JSON.stringify(player));
+        if (player.id) localStorage.setItem('hub_player_id', player.id);
+        if (player.name) localStorage.setItem('hub_player_name', player.name);
+        if (player.roomCode) localStorage.setItem('hub_room_code', player.roomCode);
       } catch (e) {}
     },
 
     /**
-     * Get current player session
+     * Get current player session from localStorage
      */
     getPlayerSession() {
       try {
-        const saved = sessionStorage.getItem(STORAGE_KEY_PLAYER);
-        return saved ? JSON.parse(saved) : null;
+        const saved = localStorage.getItem(STORAGE_KEY_PLAYER);
+        if (saved) return JSON.parse(saved);
+        const pid = localStorage.getItem('hub_player_id');
+        const pname = localStorage.getItem('hub_player_name');
+        const rcode = localStorage.getItem('hub_room_code');
+        if (pid && rcode) {
+          return { id: pid, name: pname || 'Pemain', roomCode: rcode };
+        }
+        return null;
       } catch (e) {
         return null;
       }
@@ -169,7 +179,9 @@ const DB = (function () {
 
     clearPlayerSession() {
       try {
-        sessionStorage.removeItem(STORAGE_KEY_PLAYER);
+        localStorage.removeItem(STORAGE_KEY_PLAYER);
+        localStorage.removeItem('hub_player_id');
+        localStorage.removeItem('hub_room_code');
       } catch (e) {}
     },
 
@@ -254,9 +266,10 @@ const DB = (function () {
           const roomRef = dbInstance.ref(`rooms/${roomCode}`);
           await roomRef.set(initialRoomData);
 
-          // Configure onDisconnect: remove player or delete room if host disconnects
+          // Track online presence without purging player data on quick F5 / refresh
           const playerRef = dbInstance.ref(`rooms/${roomCode}/players/${playerId}`);
-          playerRef.onDisconnect().remove();
+          playerRef.child('isOnline').onDisconnect().set(false);
+          playerRef.child('isOnline').set(true);
 
           UI.Logger('FIREBASE', `Room Created: [${roomCode}] by Host: ${hostName}`);
         } else {
@@ -281,20 +294,12 @@ const DB = (function () {
 
     /**
      * 2. JOIN ROOM
-     * Adds a player to an existing room
+     * Adds a player to an existing room, or reconnects existing player on F5 / refresh
      */
-    async joinRoom(roomCode, playerName) {
+    async joinRoom(roomCode, playerName, preferredPlayerId = null) {
       const code = roomCode.trim().toUpperCase();
-      const playerId = generatePlayerId();
+      let playerId = preferredPlayerId || localStorage.getItem('hub_player_id') || generatePlayerId();
       const colorIndex = Math.floor(Math.random() * 10);
-
-      const newPlayer = {
-        id: playerId,
-        name: playerName.trim(),
-        isHost: false,
-        colorIndex: colorIndex,
-        joinedAt: Date.now()
-      };
 
       try {
         if (!isOfflineMode && dbInstance) {
@@ -308,14 +313,28 @@ const DB = (function () {
           }
 
           const roomData = snapshot.val();
+          const existing = (roomData.players && roomData.players[playerId]) ? roomData.players[playerId] : null;
 
-          // Add player to room
+          const playerObj = existing ? {
+            ...existing,
+            name: playerName.trim() || existing.name,
+            isOnline: true
+          } : {
+            id: playerId,
+            name: playerName.trim(),
+            isHost: false,
+            colorIndex: colorIndex,
+            isOnline: true,
+            joinedAt: Date.now()
+          };
+
+          // Save player to room
           const playerRef = dbInstance.ref(`rooms/${code}/players/${playerId}`);
-          await playerRef.set(newPlayer);
-          playerRef.onDisconnect().remove();
+          await playerRef.set(playerObj);
+          playerRef.child('isOnline').onDisconnect().set(false);
 
-          UI.Logger('FIREBASE', `Player [${playerName}] joined Room: [${code}]`);
-          const session = { ...newPlayer, roomCode: code };
+          UI.Logger('FIREBASE', `Player [${playerObj.name}] (${existing ? 'RECONNECTED' : 'JOINED'}) Room: [${code}]`);
+          const session = { ...playerObj, roomCode: code };
           this.savePlayerSession(session);
           return { success: true, roomCode: code, player: session, roomData };
         } else {
@@ -326,22 +345,72 @@ const DB = (function () {
             return { success: false, error: 'Room tidak ditemukan' };
           }
           const roomData = JSON.parse(raw);
-          roomData.players[playerId] = newPlayer;
+          const existing = (roomData.players && roomData.players[playerId]) ? roomData.players[playerId] : null;
+
+          const playerObj = existing ? {
+            ...existing,
+            name: playerName.trim() || existing.name,
+            isOnline: true
+          } : {
+            id: playerId,
+            name: playerName.trim(),
+            isHost: false,
+            colorIndex: colorIndex,
+            isOnline: true,
+            joinedAt: Date.now()
+          };
+
+          if (!roomData.players) roomData.players = {};
+          roomData.players[playerId] = playerObj;
           localStorage.setItem(`mock_room_${code}`, JSON.stringify(roomData));
 
           if (fallbackChannel) {
             fallbackChannel.postMessage({ type: 'ROOM_UPDATE', code, data: roomData });
           }
 
-          const session = { ...newPlayer, roomCode: code };
+          const session = { ...playerObj, roomCode: code };
           this.savePlayerSession(session);
-          UI.Logger('FIREBASE', `[LOCAL MOCK] Player [${playerName}] joined Room: [${code}]`);
+          UI.Logger('FIREBASE', `[LOCAL MOCK] Player [${playerObj.name}] (${existing ? 'RECONNECTED' : 'JOINED'}) Room: [${code}]`);
           return { success: true, roomCode: code, player: session, roomData };
         }
       } catch (error) {
         UI.Logger('FIREBASE', 'Error joining room', error, true);
         UI.Toast('Gagal bergabung ke room: ' + error.message, 'error');
         return { success: false, error: error.message };
+      }
+    },
+
+    /**
+     * Atomically submit voting choice to prevent race condition
+     */
+    async submitVotingChoice(roomCode, playerId, choices) {
+      const code = roomCode.trim().toUpperCase();
+      try {
+        if (!isOfflineMode && dbInstance) {
+          await dbInstance.ref(`rooms/${code}/votingGame/votes/${playerId}`).set(choices);
+          await dbInstance.ref(`rooms/${code}/gameState/voting/votes/${playerId}`).set(choices);
+          return true;
+        } else {
+          const raw = localStorage.getItem(`mock_room_${code}`);
+          if (raw) {
+            const roomData = JSON.parse(raw);
+            if (!roomData.votingGame) roomData.votingGame = {};
+            if (!roomData.votingGame.votes) roomData.votingGame.votes = {};
+            roomData.votingGame.votes[playerId] = choices;
+            if (!roomData.gameState) roomData.gameState = {};
+            if (!roomData.gameState.voting) roomData.gameState.voting = {};
+            if (!roomData.gameState.voting.votes) roomData.gameState.voting.votes = {};
+            roomData.gameState.voting.votes[playerId] = choices;
+            localStorage.setItem(`mock_room_${code}`, JSON.stringify(roomData));
+            if (fallbackChannel) {
+              fallbackChannel.postMessage({ type: 'ROOM_UPDATE', code, data: roomData });
+            }
+          }
+          return true;
+        }
+      } catch (err) {
+        UI.Logger('FIREBASE', 'Error submitting voting choice', err, true);
+        return false;
       }
     },
 
@@ -651,3 +720,7 @@ const DB = (function () {
     }
   };
 })();
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = DB;
+}

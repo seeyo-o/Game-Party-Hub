@@ -844,23 +844,32 @@ const VotingGame = (function () {
 
       try {
         const votingData = getVotingState(currentRoom);
-        const currentVotes = votingData.votes || {};
+        const choices = Array.from(localSelectedVotes);
 
+        // Atomically write vote specifically to rooms/{roomCode}/votingGame/votes/{myPlayerId}
+        if (typeof DB.submitVotingChoice === 'function') {
+          await DB.submitVotingChoice(currentRoom.code, currentPlayer.id, choices);
+        } else {
+          await DB.updateGameState(currentRoom.code, 'voting', {
+            [`votes/${currentPlayer.id}`]: choices
+          });
+        }
+
+        const currentVotes = votingData.votes || {};
         const updatedVotes = {
           ...currentVotes,
-          [currentPlayer.id]: Array.from(localSelectedVotes)
+          [currentPlayer.id]: choices
         };
 
         // Check if all players in room have completed voting
-        const allVoted = playerList.every(p => updatedVotes[p.id]);
+        const allVoted = playerList.length > 0 && playerList.every(p => updatedVotes[p.id]);
 
-        const partialUpdate = {
-          votes: updatedVotes,
-          status: allVoted ? 'results' : 'voting',
-          revealed: allVoted ? true : Boolean(votingData.revealed)
-        };
-
-        await DB.updateGameState(currentRoom.code, 'voting', partialUpdate);
+        if (allVoted) {
+          await DB.updateGameState(currentRoom.code, 'voting', {
+            status: 'results',
+            revealed: true
+          });
+        }
 
         UI.Sound.fanfare();
         UI.Toast('Pilihanmu berhasil dikunci! 🔒', 'success');

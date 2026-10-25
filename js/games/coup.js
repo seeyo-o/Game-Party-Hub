@@ -987,6 +987,12 @@ const CoupGame = (function () {
     const myData = state.players[currentPlayer.id];
     const myCoins = myData?.coins || 0;
 
+    // Rule: Mandatory Coup when coins >= 10
+    if (myCoins >= 10 && actionType !== 'coup') {
+      UI.Toast('Koinmu mencapai 10 atau lebih! Kamu wajib melakukan Kudeta (Coup)!', 'warning');
+      return;
+    }
+
     // Target validation for targetable actions
     if (['coup', 'assassinate', 'steal'].includes(actionType)) {
       if (!selectedTargetPlayerId) {
@@ -1350,17 +1356,33 @@ const CoupGame = (function () {
         currentAction: null
       });
     } else if (action.type === 'assassinate') {
-      actionLogs.push({ text: `[${actor.name}] berhasil mengeksekusi pembunuhan kepada [${target.name}]!`, timestamp: Date.now() });
-      await DB.updateGameState(currentRoom.code, 'coup', {
-        players,
-        actionLogs,
-        status: 'card_reveal_choice',
-        pendingCardLoss: {
-          targetPlayerId: target.id,
-          reason: 'assassinate',
-          nextStep: 'advance_turn'
-        }
-      });
+      const targetLiving = (players[target.id]?.cards || []).filter(c => c.isAlive);
+      if (targetLiving.length === 0) {
+        // Target already lost their last card in the challenge; avoid minus cards / double-death freeze!
+        players[target.id].isAlive = false;
+        const next = getNextTurnData(state.turnOrder, state.turnIndex, players);
+        await DB.updateGameState(currentRoom.code, 'coup', {
+          players,
+          actionLogs,
+          status: 'action_turn',
+          currentTurnPlayerId: next.playerId,
+          turnIndex: next.index,
+          currentAction: null,
+          pendingCardLoss: null
+        });
+      } else {
+        actionLogs.push({ text: `[${actor.name}] berhasil mengeksekusi pembunuhan kepada [${target.name}]!`, timestamp: Date.now() });
+        await DB.updateGameState(currentRoom.code, 'coup', {
+          players,
+          actionLogs,
+          status: 'card_reveal_choice',
+          pendingCardLoss: {
+            targetPlayerId: target.id,
+            reason: 'assassinate',
+            nextStep: 'advance_turn'
+          }
+        });
+      }
     } else if (action.type === 'exchange') {
       const deck = [...(state.deck || [])];
       const drawnCards = [deck.pop(), deck.pop()].filter(Boolean);
@@ -1525,10 +1547,11 @@ const CoupGame = (function () {
     const total = turnOrder.length;
     let nextIndex = (currentTurnIndex + 1) % total;
 
-    // Loop until we find a living player
+    // Loop until we find a living player with at least one active card
     for (let i = 0; i < total; i++) {
       const pid = turnOrder[nextIndex];
-      if (playersMap[pid] && playersMap[pid].isAlive) {
+      const pData = playersMap[pid];
+      if (pData && pData.isAlive && (pData.cards || []).some(c => c.isAlive)) {
         return { index: nextIndex, playerId: pid };
       }
       nextIndex = (nextIndex + 1) % total;

@@ -613,6 +613,14 @@ const TentangKitaGame = (function () {
       await DB.updateGameState(currentRoom.code, 'tentangKita', {
         selectedAnswerer: null
       });
+    },
+
+    /**
+     * Reset and cleanup when navigating away
+     */
+    cleanup() {
+      isSpinningLocal = false;
+      UI.Logger('TENTANG-KITA', 'Cleaned up TentangKitaGame state');
     }
   };
 })();

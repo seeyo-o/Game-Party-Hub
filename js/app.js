@@ -167,133 +167,80 @@ const App = (function () {
   }
 
   /**
+   * Helper to clean up all inactive games and detach their temporary states
+   */
+  function cleanupInactiveGames(activeMode) {
+    const registry = [
+      { id: 'tentang-kita', module: typeof TentangKitaGame !== 'undefined' ? TentangKitaGame : null },
+      { id: 'voting', module: typeof VotingGame !== 'undefined' ? VotingGame : null },
+      { id: 'guess-who', module: typeof GuessWhoGame !== 'undefined' ? GuessWhoGame : null },
+      { id: 'werewolf', module: typeof WerewolfGame !== 'undefined' ? WerewolfGame : null },
+      { id: 'coup', module: typeof CoupGame !== 'undefined' ? CoupGame : null },
+      { id: 'costume-detective', module: typeof CostumeDetectiveGame !== 'undefined' ? CostumeDetectiveGame : null },
+      { id: 'spicy', module: typeof SpicyGame !== 'undefined' ? SpicyGame : null },
+      { id: 'trio', module: typeof TrioGame !== 'undefined' ? TrioGame : null },
+      { id: 'secret-hitler', module: typeof SecretHitlerGame !== 'undefined' ? SecretHitlerGame : null }
+    ];
+
+    registry.forEach(({ id, module }) => {
+      if (id !== activeMode && module && typeof module.cleanup === 'function') {
+        try {
+          module.cleanup();
+        } catch (err) {
+          UI.Logger('APP', `Cleanup error on [${id}]`, err, true);
+        }
+      }
+    });
+  }
+
+  /**
    * Directs view based on room.currentGame
    */
   function routeRoomState() {
     const appEl = document.getElementById('app');
     if (!appEl || !currentRoom) return;
 
+    // Check host migration: If current player's id matches room hostId, ensure isHost is true
+    if (currentPlayer && currentRoom.hostId === currentPlayer.id) {
+      currentPlayer.isHost = true;
+    }
+
     const gameMode = currentRoom.currentGame || 'lobby';
     UI.Logger('APP', `Routing room state to: [${gameMode}]`);
+
+    // Clean up all other games
+    cleanupInactiveGames(gameMode);
 
     // Synchronize global theme across all players
     UI.setTheme(gameMode);
 
     if (gameMode === 'lobby') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
       renderLobbyView();
     } else if (gameMode === 'tentang-kita') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
       TentangKitaGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'voting') {
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
-      if (typeof VotingGame.onStateChange === 'function') {
-        VotingGame.onStateChange(currentRoom);
-      }
+      if (typeof VotingGame.onStateChange === 'function') VotingGame.onStateChange(currentRoom);
       VotingGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'guess-who') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
-      if (typeof GuessWhoGame.onStateChange === 'function') {
-        GuessWhoGame.onStateChange(currentRoom);
-      }
+      if (typeof GuessWhoGame.onStateChange === 'function') GuessWhoGame.onStateChange(currentRoom);
       GuessWhoGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'werewolf') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
-      if (typeof WerewolfGame.onStateChange === 'function') {
-        WerewolfGame.onStateChange(currentRoom);
-      }
+      if (typeof WerewolfGame.onStateChange === 'function') WerewolfGame.onStateChange(currentRoom);
       WerewolfGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'coup') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
-      if (typeof CoupGame.onStateChange === 'function') {
-        CoupGame.onStateChange(currentRoom);
-      }
+      if (typeof CoupGame.onStateChange === 'function') CoupGame.onStateChange(currentRoom);
       CoupGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'costume-detective') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
-      if (typeof CostumeDetectiveGame.onStateChange === 'function') {
-        CostumeDetectiveGame.onStateChange(currentRoom);
-      }
+      if (typeof CostumeDetectiveGame.onStateChange === 'function') CostumeDetectiveGame.onStateChange(currentRoom);
       CostumeDetectiveGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'spicy') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
-      if (typeof SpicyGame.onStateChange === 'function') {
-        SpicyGame.onStateChange(currentRoom);
-      }
+      if (typeof SpicyGame.onStateChange === 'function') SpicyGame.onStateChange(currentRoom);
       SpicyGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'trio') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof SecretHitlerGame.cleanup === 'function') SecretHitlerGame.cleanup();
-      if (typeof TrioGame.onStateChange === 'function') {
-        TrioGame.onStateChange(currentRoom);
-      }
+      if (typeof TrioGame.onStateChange === 'function') TrioGame.onStateChange(currentRoom);
       TrioGame.render(appEl, currentRoom, currentPlayer);
     } else if (gameMode === 'secret-hitler') {
-      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
-      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
-      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
-      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
-      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
-      if (typeof SpicyGame.cleanup === 'function') SpicyGame.cleanup();
-      if (typeof TrioGame.cleanup === 'function') TrioGame.cleanup();
-      if (typeof SecretHitlerGame.onStateChange === 'function') {
-        SecretHitlerGame.onStateChange(currentRoom);
-      }
+      if (typeof SecretHitlerGame.onStateChange === 'function') SecretHitlerGame.onStateChange(currentRoom);
       SecretHitlerGame.render(appEl, currentRoom, currentPlayer);
     }
   }
@@ -1036,10 +983,27 @@ const App = (function () {
 
     // Host switches room state; if non-host clicks, they notify host or can return view
     if (currentPlayer?.isHost) {
+      cleanupInactiveGames('lobby');
       await DB.switchGame(currentRoom.code, 'lobby');
     } else {
       UI.Toast('Hanya Host yang dapat mengembalikan seluruh ruangan ke Lobby.', 'warning');
     }
+  }
+
+  /**
+   * Host emergency Reset Game
+   */
+  async function resetGame() {
+    if (!currentRoom) return;
+    if (!currentPlayer?.isHost) {
+      UI.Toast('Hanya Host yang dapat me-reset game!', 'warning');
+      return;
+    }
+    UI.Sound.click();
+    UI.Logger('APP', 'Host performed emergency resetGame');
+    cleanupInactiveGames('lobby');
+    await DB.switchGame(currentRoom.code, 'lobby');
+    UI.Toast('🔄 Game berhasil di-reset ke Lobby oleh Host!', 'info');
   }
 
   /**
@@ -1147,6 +1111,7 @@ const App = (function () {
     selectGame,
     launchSelectedGame,
     returnToLobby,
+    resetGame,
     openSettingsModal,
     saveFirebaseSettings,
     resetToDemoConfig,

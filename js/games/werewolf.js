@@ -1326,6 +1326,11 @@ const WerewolfGame = (function () {
       return;
     }
 
+    if (myData.role === 'doctor' && localNightSelection === state.lastNightSavedDoctorId) {
+      UI.Toast('Dokter tidak boleh melindungi pemain yang sama 2 malam berturut-turut!', 'warning');
+      return;
+    }
+
     isSubmitting = true;
     UI.Sound.click();
 
@@ -1347,7 +1352,7 @@ const WerewolfGame = (function () {
 
     const livingPlayers = Object.values(state.playerRoles || {}).filter(p => p.isAlive);
     const livingCount = livingPlayers.length;
-    const allDone = Object.keys(nightActions).length >= livingCount;
+    const allDone = livingCount > 0 && livingPlayers.every(p => nightActions[p.id]);
 
     const updates = { nightActions };
 
@@ -1426,17 +1431,20 @@ const WerewolfGame = (function () {
       }
     }
 
-    // Check Win Condition
-    const winner = checkWinCondition(playerRoles);
-    if (winner) {
-      nextStatus = 'game_over';
+    // Check Win Condition (Hunter revenge executes BEFORE checking game over!)
+    let winner = null;
+    if (nextStatus !== 'hunter_revenge') {
+      winner = checkWinCondition(playerRoles);
+      if (winner) {
+        nextStatus = 'game_over';
+      }
     }
 
     return {
       playerRoles,
       status: nextStatus,
       nightReport,
-      lastNightSavedDoctorId: doctorTargetId,
+      lastNightSavedDoctorId: doctorTargetId || null,
       hunterPendingDeath,
       winner: winner || null,
       nightActions: {}
@@ -1541,10 +1549,13 @@ const WerewolfGame = (function () {
       }
     }
 
-    // Check Win Condition
-    const winner = checkWinCondition(playerRoles);
-    if (winner) {
-      nextStatus = 'game_over';
+    // Check Win Condition (Hunter revenge executes BEFORE checking game over!)
+    let winner = null;
+    if (nextStatus !== 'hunter_revenge') {
+      winner = checkWinCondition(playerRoles);
+      if (winner) {
+        nextStatus = 'game_over';
+      }
     }
 
     return {

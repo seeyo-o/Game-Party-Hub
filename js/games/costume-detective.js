@@ -383,12 +383,23 @@ const CostumeDetectiveGame = (function () {
             </div>
 
             ${isMyTurn ? `
-              <button 
-                onclick="CostumeDetectiveGame.cancelSelection()" 
-                class="px-3 py-1.5 rounded-xl text-xs font-display font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all self-start sm:self-auto cursor-pointer"
-              >
-                Reset Pilihan
-              </button>
+              <div class="flex items-center gap-2">
+                ${dice.rollType === 'eliminate' ? `
+                  <button 
+                    onclick="CostumeDetectiveGame.skipElimination()" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-display font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 transition-all cursor-pointer"
+                    title="Lewati aksi jika tidak ingin mengeliminasi atau tidak ada target"
+                  >
+                    ⏭️ Lewati Eliminasi
+                  </button>
+                ` : ''}
+                <button 
+                  onclick="CostumeDetectiveGame.cancelSelection()" 
+                  class="px-3 py-1.5 rounded-xl text-xs font-display font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all self-start sm:self-auto cursor-pointer"
+                >
+                  Reset Pilihan
+                </button>
+              </div>
             ` : ''}
           </div>
 
@@ -752,9 +763,23 @@ const CostumeDetectiveGame = (function () {
       label = `🔴🟡🔵 TARIK KE ${r.name.toUpperCase()}`;
       description = `Tarik 1 karakter dari ruangan mana saja untuk masuk ke [${r.name}]!`;
     } else {
-      rollType = 'eliminate';
-      label = '💀 ELIMINASI (INTEROGASI)';
-      description = 'Pilih 1 karakter di ruangan yang berisi minimal 2 tamu untuk dieliminasi dari pesta!';
+      // Check if any room has >= 2 characters to eliminate (anti soft-lock)
+      const livingChars = Object.values(state.boardCharacters || {}).filter(c => c.isAlive);
+      const roomCounts = {};
+      livingChars.forEach(c => {
+        roomCounts[c.roomId] = (roomCounts[c.roomId] || 0) + 1;
+      });
+      const hasEligibleRoom = Object.values(roomCounts).some(cnt => cnt >= 2);
+
+      if (!hasEligibleRoom) {
+        rollType = 'move_free';
+        label = '🏃 PINDAH BEBAS (ANTI SOFT-LOCK)';
+        description = 'Seluruh tamu pesta berdiri sendirian di ruangan! Dadu dialihkan menjadi Pindah Bebas.';
+      } else {
+        rollType = 'eliminate';
+        label = '💀 ELIMINASI (INTEROGASI)';
+        description = 'Pilih 1 karakter di ruangan yang berisi minimal 2 tamu untuk dieliminasi dari pesta!';
+      }
     }
 
     const actionLogs = [...(state.actionLogs || [])];
@@ -873,11 +898,20 @@ const CostumeDetectiveGame = (function () {
     const state = getGameState(currentRoom);
     if (state.currentTurnPlayerId !== currentPlayer.id) return;
 
+    const boardCharacters = { ...state.boardCharacters };
+    const char = boardCharacters[charId];
+    if (!char || !char.isAlive) return;
+
+    // Protection rule: character standing alone in a room cannot be eliminated!
+    const charsInSameRoom = Object.values(boardCharacters).filter(c => c.isAlive && c.roomId === char.roomId);
+    if (charsInSameRoom.length < 2) {
+      UI.Toast('Karakter yang sendirian di dalam ruangan aman dan tidak bisa dieliminasi!', 'warning');
+      return;
+    }
+
     isSubmitting = true;
     UI.Sound.gong();
 
-    const boardCharacters = { ...state.boardCharacters };
-    const char = boardCharacters[charId];
     char.isAlive = false;
 
     const roomName = ROOMS_DEF[char.roomId]?.name;
@@ -909,6 +943,35 @@ const CostumeDetectiveGame = (function () {
         diceState: { hasRolled: false }
       });
     }
+
+    selectedCharacterId = null;
+    isSubmitting = false;
+  }
+
+  /**
+   * Skip elimination turn if player chooses not to or can't eliminate
+   */
+  async function skipElimination() {
+    if (!currentRoom || !currentPlayer || isSubmitting) return;
+    const state = getGameState(currentRoom);
+    if (state.currentTurnPlayerId !== currentPlayer.id) return;
+
+    isSubmitting = true;
+    UI.Sound.click();
+
+    const actionLogs = [...(state.actionLogs || [])];
+    actionLogs.push({
+      text: `⏭️ [${currentPlayer.name}] melewati giliran eliminasi.`,
+      timestamp: Date.now()
+    });
+
+    const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
+    await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+      actionLogs,
+      currentTurnPlayerId: nextTurnData.playerId,
+      turnIndex: nextTurnData.index,
+      diceState: { hasRolled: false }
+    });
 
     selectedCharacterId = null;
     isSubmitting = false;
@@ -988,6 +1051,7 @@ const CostumeDetectiveGame = (function () {
     moveSelectedCharacterToRoom,
     pullCharacterToRoom,
     eliminateCharacter,
+    skipElimination,
     cleanup
   };
 })();

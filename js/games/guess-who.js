@@ -2559,7 +2559,7 @@ const GuessWhoGame = (function () {
           >
             <!-- Gambar Karakter -->
             <img 
-              src="${card.image}" 
+              src="${card.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(card.name)}&background=0284c7&color=fff&size=200`}" 
               alt="${card.name}"
               loading="lazy"
               referrerpolicy="no-referrer"
@@ -2703,6 +2703,13 @@ const GuessWhoGame = (function () {
 
       const gameState = getGameState(currentRoom);
       const stats = gameState.playerStats || {};
+
+      // Player must be alive to guess
+      if (!stats[currentPlayer.id]?.isAlive) {
+        UI.Toast('Pemain yang sudah gugur tidak dapat menebak!', 'warning');
+        return;
+      }
+
       const playerList = Object.values(currentRoom.players || {});
       const board = gameState.boardCharacters || [];
 
@@ -2800,15 +2807,15 @@ const GuessWhoGame = (function () {
       UI.closeModal();
 
       const gameState = getGameState(currentRoom);
-      const playerList = Object.values(currentRoom.players || {});
-      const targetPlayer = playerList.find(p => p.id === targetPlayerId);
-      const board = gameState.boardCharacters || [];
-      const guessedCard = board.find(c => c.id === guessedCharId);
-
-      const secrets = gameState.playerSecrets || {};
-      const realSecretId = secrets[targetPlayerId];
-
       const stats = { ...(gameState.playerStats || {}) };
+
+      // Player must be alive
+      if (!stats[currentPlayer.id]?.isAlive) {
+        UI.Toast('Pemain yang sudah gugur tidak dapat menebak!', 'warning');
+        return;
+      }
+
+      const playerList = Object.values(currentRoom.players || {});
       if (!stats[currentPlayer.id]) stats[currentPlayer.id] = { isAlive: true, points: 0 };
       if (!stats[targetPlayerId]) stats[targetPlayerId] = { isAlive: true, points: 0 };
 

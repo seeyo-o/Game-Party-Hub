@@ -312,17 +312,15 @@ const TrioGame = (function () {
       // Pastikan tangan target player selalu terurut sebelum mengambil kartu
       targetPlayer.hand = sortHand(targetPlayer.hand);
 
-      // Hitung kartu yang sedang terbuka dari tangan pemain ini pada langkah sebelumnya
-      // agar tidak mengambil kartu yang sama jika ada di step
-      let cardIndex = (edge === 'lowest') ? 0 : targetPlayer.hand.length - 1;
-      const candidateCard = targetPlayer.hand[cardIndex];
-
-      const alreadyInSteps = newState.revealedSteps.some(s => s.sourceType === 'player_hand' && s.card.id === candidateCard.id);
-      if (alreadyInSteps) {
-        UI.Toast('Kartu ujung ini sedang terbuka!', 'warning');
+      // Ambil kartu dari ujung yang belum terbuka di ronde berjalan
+      const unrevealedHand = targetPlayer.hand.filter(c => !newState.revealedSteps.some(s => s.sourceType === 'player_hand' && s.card.id === c.id));
+      if (unrevealedHand.length === 0) {
+        UI.Toast('Seluruh kartu di tangan pemain ini sedang terbuka!', 'warning');
         isSubmitting = false;
         return;
       }
+
+      const candidateCard = (edge === 'lowest') ? unrevealedHand[0] : unrevealedHand[unrevealedHand.length - 1];
 
       revealedCard = candidateCard;
       const edgeLabel = edge === 'lowest' ? 'TERKECIL (Kiri)' : 'TERBESAR (Kanan)';
