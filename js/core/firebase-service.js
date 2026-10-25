@@ -479,6 +479,12 @@ const DB = (function () {
               updatedAt: Date.now()
             });
           }
+          if (gameKey === 'coup') {
+            await dbInstance.ref(`rooms/${code}/coupGame`).update({
+              ...partialState,
+              updatedAt: Date.now()
+            });
+          }
         } else {
           const raw = localStorage.getItem(`mock_room_${code}`);
           if (raw) {
@@ -507,6 +513,13 @@ const DB = (function () {
             if (gameKey === 'werewolf') {
               roomData.werewolfGame = {
                 ...(roomData.werewolfGame || {}),
+                ...partialState,
+                updatedAt: Date.now()
+              };
+            }
+            if (gameKey === 'coup') {
+              roomData.coupGame = {
+                ...(roomData.coupGame || {}),
                 ...partialState,
                 updatedAt: Date.now()
               };
