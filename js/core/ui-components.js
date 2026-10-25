@@ -97,10 +97,10 @@ const UI = (function () {
   return {
     /**
      * 1. Change active theme palette on <body>
-     * Available: 'lobby', 'tentang-kita', 'voting', 'guess-who', 'werewolf', 'coup', 'costume-detective'
+     * Available: 'lobby', 'tentang-kita', 'voting', 'guess-who', 'werewolf', 'coup', 'costume-detective', 'spicy', 'trio', 'secret-hitler'
      */
     setTheme(themeName) {
-      const validThemes = ['lobby', 'tentang-kita', 'voting', 'guess-who', 'werewolf', 'coup', 'costume-detective'];
+      const validThemes = ['lobby', 'tentang-kita', 'voting', 'guess-who', 'werewolf', 'coup', 'costume-detective', 'spicy', 'trio', 'secret-hitler'];
       const targetTheme = validThemes.includes(themeName) ? themeName : 'lobby';
       
       document.body.setAttribute('data-theme', targetTheme);

@@ -80,6 +80,39 @@ const App = (function () {
       theme: 'costume-detective',
       colorClasses: 'from-teal-500/10 to-violet-500/10 border-teal-300 text-teal-900',
       description: 'Sembunyikan identitas kostummu di antara 6 ruangan pesta, gerakkan karakter untuk mengecoh lawan, dan tebak samaran mereka.'
+    },
+    {
+      id: 'spicy',
+      title: 'Spicy',
+      subtitle: 'Bluffing Rempah Panas (Wasabi, Cabe, Lada)',
+      badge: 'BLUFFING',
+      badgeVariant: 'accent',
+      icon: 'flame',
+      theme: 'spicy',
+      colorClasses: 'from-orange-500/10 to-amber-500/10 border-orange-300 text-orange-900',
+      description: 'Gertakan rempah pedas dan angka bertingkat. Tantang apakah lawanmu berbohong pada jenis bumbu atau angka kartu!'
+    },
+    {
+      id: 'trio',
+      title: 'Trio',
+      subtitle: 'Deduksi Memori 3 Kartu Kembar',
+      badge: 'MEMORI',
+      badgeVariant: 'primary',
+      icon: 'layers',
+      theme: 'trio',
+      colorClasses: 'from-cyan-500/10 to-pink-500/10 border-cyan-300 text-cyan-900',
+      description: 'Cari 3 kartu bernilai sama dari tangan lawan dan meja. Ingat: kamu hanya boleh meminta kartu terkecil atau terbesar!'
+    },
+    {
+      id: 'secret-hitler',
+      title: 'Secret Hitler',
+      subtitle: 'Deduksi Politik & Intrik Parlemen',
+      badge: 'DEDUKSI',
+      badgeVariant: 'accent',
+      icon: 'briefcase',
+      theme: 'secret-hitler',
+      colorClasses: 'from-rose-500/10 to-blue-500/10 border-rose-300 text-rose-900',
+      description: 'Pemilihan Presiden, Kanselir, pengesahan undang-undang rahasia, serta perburuan identitas Secret Hitler di ruang sidang Discord.'
     }
   ];
 
@@ -205,6 +238,13 @@ const App = (function () {
         CostumeDetectiveGame.onStateChange(currentRoom);
       }
       CostumeDetectiveGame.render(appEl, currentRoom, currentPlayer);
+    } else if (['spicy', 'trio', 'secret-hitler'].includes(gameMode)) {
+      if (typeof VotingGame.cleanup === 'function') VotingGame.cleanup();
+      if (typeof GuessWhoGame.cleanup === 'function') GuessWhoGame.cleanup();
+      if (typeof WerewolfGame.cleanup === 'function') WerewolfGame.cleanup();
+      if (typeof CoupGame.cleanup === 'function') CoupGame.cleanup();
+      if (typeof CostumeDetectiveGame.cleanup === 'function') CostumeDetectiveGame.cleanup();
+      renderUpcomingGameView(gameMode);
     }
   }
 
@@ -290,7 +330,7 @@ const App = (function () {
             <i data-lucide="sparkles" class="w-4 h-4 text-indigo-600"></i>
             <h3 class="font-display font-black text-sm uppercase tracking-wider text-slate-700">Pilihan Game Party Tongkrongan</h3>
           </div>
-          <span class="text-xs font-display font-semibold text-slate-400">6 Game Tersedia</span>
+          <span class="text-xs font-display font-semibold text-slate-400">9 Game Tersedia</span>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -433,6 +473,78 @@ const App = (function () {
               <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Sembunyikan identitas kostummu di antara 6 ruangan.</p>
             </div>
             <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-teal-600 group-hover:text-teal-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- 7. Spicy -->
+          <div 
+            onclick="GameRules.open('spicy', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-orange-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Spicy"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="flame" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-display font-bold">
+                  Bluffing Pedas
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-orange-600 transition-colors">Spicy</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Gertakan rempah panas wasabi, cabe, dan lada dengan tantangan angka atau bumbu.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-orange-600 group-hover:text-orange-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- 8. Trio -->
+          <div 
+            onclick="GameRules.open('trio', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-cyan-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Trio"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-cyan-100 text-cyan-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="layers" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200 text-[10px] font-display font-bold">
+                  Deduksi Memori
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-cyan-600 transition-colors">Trio</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Deduksi memori mencari 3 angka kembar dari tangan lawan & meja dengan aturan ekstrem.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-cyan-600 group-hover:text-cyan-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- 9. Secret Hitler -->
+          <div 
+            onclick="GameRules.open('secret-hitler', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-rose-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Secret Hitler"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shadow-xs">
+                  <i data-lucide="briefcase" class="w-5 h-5"></i>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-display font-bold">
+                  Deduksi Politik
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-rose-600 transition-colors">Secret Hitler</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Intrik pemilihan Presiden, Kanselir, undang-undang rahasia, dan kudeta tersembunyi.</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-rose-600 group-hover:text-rose-700">
               <span>📖 Klik untuk Cara Bermain</span>
               <span class="group-hover:translate-x-1 transition-transform">→</span>
             </div>

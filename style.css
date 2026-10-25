@@ -139,6 +139,54 @@ body[data-theme="costume-detective"] {
   --theme-gradient: linear-gradient(135deg, #0D9488 0%, #7C3AED 100%);
 }
 
+/* 8. SPICY THEME ("Spicy: Bluffing Rempah Panas") */
+body[data-theme="spicy"] {
+  --color-bg: #FFF5F5;           /* Warm Chili Blush */
+  --color-surface: #FFFFFF;
+  --color-primary: #EA580C;       /* Spicy Orange-Red */
+  --color-primary-hover: #C2410C;
+  --color-primary-light: #FFEDD5;
+  --color-accent: #EAB308;        /* Gold Tiger */
+  --color-accent-hover: #CA8A04;
+  --color-text: #431407;
+  --color-muted: #9A3412;
+  --color-border: rgba(234, 88, 12, 0.16);
+  --color-ring: rgba(234, 88, 12, 0.25);
+  --theme-gradient: linear-gradient(135deg, #EA580C 0%, #EAB308 100%);
+}
+
+/* 9. TRIO THEME ("Trio: Deduksi Memori 3 Kartu Kembar") */
+body[data-theme="trio"] {
+  --color-bg: #F0F9FF;           /* Crisp Fiesta */
+  --color-surface: #FFFFFF;
+  --color-primary: #0891B2;       /* Vibrant Cyan */
+  --color-primary-hover: #0E7490;
+  --color-primary-light: #CFFAFE;
+  --color-accent: #EC4899;        /* Magenta Pop */
+  --color-accent-hover: #DB2777;
+  --color-text: #083344;
+  --color-muted: #0E7490;
+  --color-border: rgba(8, 145, 178, 0.16);
+  --color-ring: rgba(8, 145, 178, 0.25);
+  --theme-gradient: linear-gradient(135deg, #0891B2 0%, #EC4899 100%);
+}
+
+/* 10. SECRET HITLER THEME ("Secret Hitler: Deduksi Politik") */
+body[data-theme="secret-hitler"] {
+  --color-bg: #F8F5F0;           /* Vintage Parchment */
+  --color-surface: #FFFFFF;
+  --color-primary: #DC2626;       /* Fascist Crimson */
+  --color-primary-hover: #B91C1C;
+  --color-primary-light: #FEE2E2;
+  --color-accent: #2563EB;        /* Liberal Blue */
+  --color-accent-hover: #1D4ED8;
+  --color-text: #1C1917;
+  --color-muted: #78716C;
+  --color-border: rgba(220, 38, 38, 0.16);
+  --color-ring: rgba(220, 38, 38, 0.25);
+  --theme-gradient: linear-gradient(135deg, #DC2626 0%, #2563EB 100%);
+}
+
 /* ==========================================================================
    BASE & TYPOGRAPHY
    ========================================================================== */

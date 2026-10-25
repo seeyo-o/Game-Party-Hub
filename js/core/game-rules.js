@@ -416,6 +416,217 @@ const GameRules = (function () {
           desc: 'Jangan asal menuduh! Kesempatan tuduhan terbatas, pastikan kamu memiliki cukup bukti deduksi sebelum meluncurkan tuduhan.'
         }
       ]
+    },
+
+    'spicy': {
+      id: 'spicy',
+      title: 'Spicy',
+      subtitle: 'Bluffing Kartu Rempah & Angka (Wasabi, Cabe, Lada)',
+      icon: 'flame',
+      players: '2 - 6 Pemain',
+      duration: '15 - 20 Menit',
+      difficulty: 'Gertakan & Taktik (Medium)',
+      theme: 'spicy',
+      badgeColor: 'bg-orange-100 text-orange-800 border-orange-200',
+      iconBg: 'bg-orange-500 text-white',
+      accentColor: 'text-orange-600',
+      discordPrep: [
+        'Kumpul bersama di Voice Channel Discord.',
+        'Perhatikan nada bicara dan intonasi lawan saat mengklaim kartu di Discord — suara bergetar bisa jadi tanda gertakan!',
+        'Setiap pemain memegang kartu rahasia di tangan mereka dan meletakkan kartu tertutup di tumpukan meja.',
+        'Jaga ekspresi poker face kamu jika bermain menggunakan webcam Discord!'
+      ],
+      winCondition: 'Pemain yang berhasil mengumpulkan 2 Kartu Trofi (Trophy Card) atau pemain dengan poin tertinggi saat kartu habis dinyatakan sebagai Juara Rempah Terpedas!',
+      steps: [
+        {
+          num: '1',
+          title: 'Pasang Kartu Tertutup & Nyatakan Klaim',
+          desc: 'Pemain aktif meletakkan 1 kartu tertutup di tumpukan tengah sambil menyatakan jenis bumbu (Wasabi, Cabe, atau Lada) dan angka yang LEBIH TINGGI (1 hingga 10) dari klaim sebelumnya dengan jenis bumbu yang sama.'
+        },
+        {
+          num: '2',
+          title: 'Gertakan Boleh Bebas',
+          desc: 'Kartu aslimu tidak harus sesuai dengan yang kamu katakan! Kamu bisa meletakkan Lada 2 dan bersumpah di Discord bahwa itu adalah Cabe 8.'
+        },
+        {
+          num: '3',
+          title: 'Momen Menantang (Challenge)',
+          desc: 'Pemain berikutnya boleh memilih untuk meletakkan kartu yang lebih tinggi, pas (mengambil 1 kartu dari dek), atau MENANTANG kartu teratas dengan menepuk meja!'
+        },
+        {
+          num: '4',
+          title: 'Tantangan Spesifik: Rempah atau Angka?',
+          desc: 'Penantang harus memilih secara spesifik apakah dia menuduh "REMPAHNYA SALAH" atau "ANGKANYA SALAH". Kartu dibuka untuk membuktikan siapa yang benar!'
+        }
+      ],
+      specialRules: [
+        {
+          name: '🌶️ Menuduh Jenis Rempah vs Angka',
+          badge: 'Mekanik Utama',
+          badgeColor: 'bg-orange-100 text-orange-800',
+          desc: 'Penantang hanya boleh menuduh satu aspek: bumbunya salah, atau angkanya salah. Jika pemain mengaku "Cabe 8" tapi kartunya "Cabe 3", penantang yang menuduh "Rempahnya Salah" justru KALAH karena rempahnya memang Cabe!'
+        },
+        {
+          name: '🃏 Kartu Wildcard (Bumbu Liar & Angka Liar)',
+          badge: 'Kartu Khusus',
+          badgeColor: 'bg-amber-100 text-amber-800',
+          desc: 'Kartu bunglon yang bisa mewakili bumbu apa saja atau angka berapa saja. Namun waspadalah: jika ditantang pada aspek yang tidak dicakup oleh sifat wildcard-nya, pemain tetap bisa kalah!'
+        },
+        {
+          name: '🏆 Kartu Trofi & Skor Kemenangan',
+          badge: 'Kemenangan',
+          badgeColor: 'bg-yellow-100 text-yellow-800',
+          desc: 'Pemain yang berhasil menghabiskan seluruh kartu di tangannya mendapatkan 1 Kartu Trofi bernilai besar. Game selesai seketika jika ada yang mengoleksi 2 Trofi!'
+        },
+        {
+          name: '🔥 Bumbu Pedas Max 10 (Reset Bumbu Baru)',
+          badge: 'Aturan Level 10',
+          badgeColor: 'bg-red-100 text-red-800',
+          desc: 'Jika ada pemain yang menyatakan angka 10, pemain berikutnya dapat memulai tumpukan baru dengan angka 1, 2, atau 3 tetapi harus menggunakan bumbu yang BERBEDA.'
+        }
+      ]
+    },
+
+    'trio': {
+      id: 'trio',
+      title: 'Trio',
+      subtitle: 'Deduksi Memori Mencari 3 Angka Kembar',
+      icon: 'layers',
+      players: '3 - 6 Pemain',
+      duration: '10 - 15 Menit',
+      difficulty: 'Memori & Logika Cepat (Easy-Medium)',
+      theme: 'trio',
+      badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+      iconBg: 'bg-cyan-500 text-white',
+      accentColor: 'text-cyan-600',
+      discordPrep: [
+        'Kumpul di Voice Channel Discord untuk interogasi kartu.',
+        'Siapkan konsentrasi memori: perhatikan angka berapa saja yang sudah pernah dibuka oleh lawan di giliran sebelumnya.',
+        'Dilarang mencatat kartu lawan — andalkan kekuatan ingatan tongkronganmu!'
+      ],
+      winCondition: 'Pemain pertama yang berhasil mengumpulkan 3 Set Trio (3 kartu bernilai sama) ATAU langsung menang instan jika berhasil mendapatkan Trio Angka 7!',
+      steps: [
+        {
+          num: '1',
+          title: 'Pilih Sumber Kartu',
+          desc: 'Di giliranmu, kamu dapat membuka 1 kartu dari Meja (tertutup) ATAU meminta pemain lain membuka kartu dari tangan mereka.'
+        },
+        {
+          num: '2',
+          title: 'Aturan Ekstrem: Hanya Kartu Terkecil atau Terbesar!',
+          desc: 'Saat meminta kartu dari tangan pemain mana pun (termasuk tanganmu sendiri), kamu HANYA boleh meminta kartu TERKECIL atau TERBESAR yang mereka miliki. Kamu tidak bisa meminta angka di tengah!'
+        },
+        {
+          num: '3',
+          title: 'Mencari Kartu Kembar',
+          desc: 'Buka kartu kedua dengan cara yang sama. Jika kedua kartu tersebut BERNILAI SAMA, kamu berhak mencari kartu ketiga untuk melengkapi Trio. Jika berbeda, kedua kartu ditutup kembali dan giliranmu berakhir!'
+        },
+        {
+          num: '4',
+          title: 'Mendapatkan Trio & Giliran Lanjutan',
+          desc: 'Jika ketiga kartu bernilai sama terbuka, kamu mengamankan Trio tersebut ke depan tokomu dan mendapatkan giliran baru!'
+        }
+      ],
+      specialRules: [
+        {
+          name: '🔢 Urutan Tangan Wajib Rapi',
+          badge: 'Mekanik Inti',
+          badgeColor: 'bg-cyan-100 text-cyan-800',
+          desc: 'Kartu di tangan setiap pemain SELALU otomatis terurut rapi dari angka terkecil di sebelah kiri hingga angka terbesar di sebelah kanan.'
+        },
+        {
+          name: '✨ Kemenangan Instan Trio 7',
+          badge: 'Golden Trio',
+          badgeColor: 'bg-amber-100 text-amber-800',
+          desc: 'Angka 7 adalah kartu legendaris bertuah emas. Siapa pun yang berhasil mengamankan Trio 7 langsung MENANG SEKETIKA tanpa perlu mengumpulkan 3 set!'
+        },
+        {
+          name: '🎯 Set Trio Terhubung (Varian)',
+          badge: 'Taktik Lanjutan',
+          badgeColor: 'bg-pink-100 text-pink-800',
+          desc: 'Pada mode varian, mengamankan 2 set trio yang saling terhubung (misal selisih atau jumlah tertentu) juga bisa membawa kemenangan lebih cepat.'
+        },
+        {
+          name: '🧠 Pancingan Deduksi Discord',
+          badge: 'Trik Bicara',
+          badgeColor: 'bg-indigo-100 text-indigo-800',
+          desc: 'Pancing lawan untuk membuka kartu terkecilnya agar kamu tahu posisi angka kunci yang kamu butuhkan untuk trio di giliranmu selanjutnya.'
+        }
+      ]
+    },
+
+    'secret-hitler': {
+      id: 'secret-hitler',
+      title: 'Secret Hitler',
+      subtitle: 'Deduksi Sosial & Intrik Parlemen 1930-an',
+      icon: 'briefcase',
+      players: '5 - 10 Pemain',
+      duration: '30 - 45 Menit',
+      difficulty: 'Deduksi Sosial Mendalam (Hard & Seru)',
+      theme: 'secret-hitler',
+      badgeColor: 'bg-rose-100 text-rose-800 border-rose-200',
+      iconBg: 'bg-red-600 text-white',
+      accentColor: 'text-red-600',
+      discordPrep: [
+        'Semua pemain berada di Voice Channel Discord. Komunikasi mic bebas dan sangat panas selama debat parlemen.',
+        'Host memfasilitasi "Malam Buta" di awal game di mana Fasis saling mengenal satu sama lain, sementara Hitler tidak tahu siapa pengikutnya (pada 7+ pemain).',
+        'Prinsip Kepercayaan: Jangan percaya siapa pun 100%! Fasis akan berpura-pura menjadi Liberal paling suci demi meloloskan agenda rahasia.'
+      ],
+      winCondition: 'LIBERAL MENANG: Jika 5 Kebijakan Liberal disahkan ATAU Secret Hitler dieksekusi mati! FASIS MENANG: Jika 6 Kebijakan Fasis disahkan ATAU Secret Hitler terpilih menjadi Kanselir setelah 3 Kebijakan Fasis disahkan!',
+      steps: [
+        {
+          num: '1',
+          title: 'Nominasi Presiden & Kanselir',
+          desc: 'Jabatan Presiden bergilir searah jarum jam. Presiden aktif menominasikan 1 pemain lain untuk menjadi calon Kanselir.'
+        },
+        {
+          num: '2',
+          title: 'Pemilihan Umum (Ja! / Nein!)',
+          desc: 'Seluruh pemain di ruang voting memilih secara bersamaan "Ja!" (Setuju) atau "Nein!" (Tolak). Jika mayoritas Ja, pemerintahan terbentuk. Jika seri atau mayoritas Nein, pelacak pemilihan naik (3x gagal = kebijakan teratas langsung disahkan darurat tanpa kompromi!).'
+        },
+        {
+          num: '3',
+          title: 'Legislasi & Pengesahan Kebijakan',
+          desc: 'Presiden mengambil 3 kartu teratas dek kebijakan rahasia, membuang 1 secara tertutup, lalu memberikan 2 kartu tersisa ke Kanselir. Kanselir membuang 1 kartu dan mengesahkan 1 kebijakan ke papan permainan!'
+        },
+        {
+          num: '4',
+          title: 'Kekuatan Eksekutif Presiden',
+          desc: 'Jika kebijakan Fasis disahkan, Presiden mendapatkan kekuatan eksekutif spesial sesuai papan (Memeriksa Loyalti Pemain, Memilih Presiden Berikutnya, atau Mengeksekusi Mati 1 Pemain).'
+        }
+      ],
+      specialRules: [
+        {
+          name: '🕊️ Fraksi Liberal (Mayoritas Buta)',
+          badge: 'Liberal',
+          badgeColor: 'bg-blue-100 text-blue-800',
+          desc: 'Warga biasa tidak saling mengenal identitas sesama Liberal. Mereka harus mengandalkan logika matematika kebijakan dan kejujuran percakapan untuk menemukan siapa yang berbohong.'
+        },
+        {
+          name: '💀 Fraksi Fasis & Secret Hitler',
+          badge: 'Fasis',
+          badgeColor: 'bg-rose-100 text-rose-800',
+          desc: 'Fasis saling mengetahui identitas satu sama lain dan mengetahui siapa Hitler. Hitler harus menjaga citra bersih agar dicalonkan menjadi Kanselir di fase genting!'
+        },
+        {
+          name: '⚠️ Zona Bahaya (Hitler Territory)',
+          badge: 'Game Changer',
+          badgeColor: 'bg-amber-100 text-amber-800',
+          desc: 'Setelah 3 Kebijakan Fasis disahkan di papan, jika Hitler berhasil terpilih dan disahkan sebagai Kanselir, Kaum Fasis LANGSUNG MENANG SEKETIKA!'
+        },
+        {
+          name: '🔫 Kekuatan Peluru Eksekusi Mati',
+          badge: 'Eksekutif',
+          badgeColor: 'bg-red-100 text-red-800',
+          desc: 'Presiden berhak menunjuk 1 pemain untuk dieksekusi mati permanen dari permainan jika kebijakan fasis ke-4 atau ke-5 disahkan. Jika yang ditembak adalah Secret Hitler, Kaum Liberal langsung menang!'
+        },
+        {
+          name: '🛑 Hak Veto Parlemen',
+          badge: 'Aturan Khusus',
+          badgeColor: 'bg-purple-100 text-purple-800',
+          desc: 'Pada saat 5 Kebijakan Fasis telah disahkan, Presiden dan Kanselir dapat menyetujui Hak Veto bersama untuk membuang ketiga kartu kebijakan jika keduanya sepakat.'
+        }
+      ]
     }
   };
 
