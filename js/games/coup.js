@@ -258,6 +258,13 @@ const CoupGame = (function () {
           >
             Kembali ke Lobby
           </button>
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
         </div>
       </div>
     `;
@@ -813,8 +820,35 @@ const CoupGame = (function () {
             >
               Lobby
             </button>
+            <button 
+              onclick="App.leaveCurrentGame()" 
+              class="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs"
+              title="Keluar dari Permainan"
+            >
+              <i data-lucide="log-out" class="w-3.5 h-3.5 text-rose-600"></i>
+              <span>Keluar Game 🚪</span>
+            </button>
           </div>
         </div>
+
+        ${!myData.isAlive ? `
+          <div class="p-4 sm:p-5 rounded-3xl bg-rose-950 text-white border-2 border-rose-500/40 shadow-xl flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="text-3xl">💀</span>
+              <div>
+                <h4 class="font-display font-black text-sm uppercase text-rose-300">Pengaruhmu Telah Habis (Gugur)</h4>
+                <p class="font-body text-xs text-rose-200">Kamu sedang menonton sisa pertarungan bangsawan lainnya.</p>
+              </div>
+            </div>
+            <button 
+              onclick="App.leaveCurrentGame()"
+              class="px-4 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-display font-bold text-xs shadow-md active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+              <span>Keluar Game Sekarang 🚪</span>
+            </button>
+          </div>
+        ` : ''}
 
         <!-- 1. Meja Pemain Grid -->
         <div>
@@ -914,6 +948,14 @@ const CoupGame = (function () {
           >
             <i data-lucide="home" class="w-4 h-4"></i>
             <span>Kembali ke Lobby 🏠</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
           </button>
         </div>
       </div>

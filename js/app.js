@@ -934,6 +934,447 @@ const App = (function () {
     }
   }
 
+  /**
+   * Helper: Deteksi apakah pemain saat ini telah gugur/tereliminasi di game aktif
+   */
+  function isPlayerEliminatedInGame(roomData, player) {
+    if (!roomData || !player) return false;
+    const gameMode = roomData.currentGame || 'lobby';
+
+    if (gameMode === 'coup') {
+      const state = roomData.coupGame || roomData.gameState?.coup || {};
+      const p = (state.players || {})[player.id];
+      if (!p) return false;
+      if (p.isAlive === false) return true;
+      if (Array.isArray(p.cards) && p.cards.length > 0 && p.cards.every(c => !c.isAlive)) return true;
+      return false;
+    }
+
+    if (gameMode === 'werewolf') {
+      const state = roomData.werewolfGame || roomData.gameState?.werewolf || {};
+      const p = (state.playerRoles || {})[player.id];
+      if (p && p.isAlive === false) return true;
+      return false;
+    }
+
+    if (gameMode === 'secret-hitler') {
+      const state = roomData.secretHitlerGame || roomData.gameState?.secretHitler || {};
+      const p = (state.players || {})[player.id];
+      if (p && p.isAlive === false) return true;
+      return false;
+    }
+
+    if (gameMode === 'costume-detective') {
+      const state = roomData.costumeDetectiveGame || roomData.gameState?.costumeDetective || {};
+      const charId = (state.playerSecrets || {})[player.id];
+      if (charId && state.boardCharacters && state.boardCharacters[charId]) {
+        if (state.boardCharacters[charId].isAlive === false) return true;
+      }
+      return false;
+    }
+
+    if (gameMode === 'guess-who') {
+      const state = roomData.guessWhoGame || roomData.gameState?.guessWho || {};
+      const stat = (state.playerStats || {})[player.id];
+      if (stat && stat.isAlive === false) return true;
+      return false;
+    }
+
+    return false;
+  }
+
+  /**
+   * Helper Anti-Softlock: Penanganan otomatis saat pemain keluar di tengah ronde game aktif
+   */
+  async function handleAntiSoftlockOnLeave(roomData, player) {
+    if (!roomData || !player) return;
+    const code = roomData.code;
+    const gameMode = roomData.currentGame || 'lobby';
+    const remainingPlayers = Object.values(roomData.players || {}).filter(p => p.id !== player.id);
+
+    // 1. AUTO-HOST MIGRATION
+    if ((roomData.hostId === player.id || player.isHost) && remainingPlayers.length > 0) {
+      const nextHost = remainingPlayers[0];
+      try {
+        if (!DB.isOffline() && DB.getDb()) {
+          const db = DB.getDb();
+          await db.ref(`rooms/${code}/players/${nextHost.id}/isHost`).set(true);
+          await db.ref(`rooms/${code}/hostId`).set(nextHost.id);
+        }
+        roomData.hostId = nextHost.id;
+        if (roomData.players && roomData.players[nextHost.id]) {
+          roomData.players[nextHost.id].isHost = true;
+        }
+      } catch (e) {
+        UI.Logger('APP', 'Host migration error:', e, true);
+      }
+    }
+
+    // 2. GAME-SPECIFIC ANTI-SOFTLOCK & TURN/PHASE RECOVERY
+    try {
+      if (gameMode === 'coup') {
+        const state = roomData.coupGame || roomData.gameState?.coup;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          if (newState.players && newState.players[player.id]) {
+            newState.players[player.id].isAlive = false;
+            newState.players[player.id].hasLeft = true;
+            if (Array.isArray(newState.players[player.id].cards)) {
+              newState.players[player.id].cards.forEach(c => c.isAlive = false);
+            }
+          }
+          // Bersihkan aksi pending yang sedang menunggu pemain ini
+          if (newState.pendingCardLoss?.targetPlayerId === player.id) newState.pendingCardLoss = null;
+          if (newState.pendingChallenge?.actorId === player.id || newState.pendingChallenge?.challengerId === player.id) newState.pendingChallenge = null;
+          if (newState.pendingBlock?.blockerId === player.id || newState.pendingBlock?.actorId === player.id) newState.pendingBlock = null;
+
+          const livingPlayers = Object.values(newState.players || {}).filter(p => p.isAlive && p.id !== player.id);
+          if (livingPlayers.length <= 1) {
+            newState.status = 'game_over';
+            newState.winner = livingPlayers[0] || null;
+            if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+            newState.actionLogs.push({
+              text: `👑 [${livingPlayers[0]?.name || 'Pemain Terakhir'}] Menang Coup karena lawan telah gugur/keluar!`,
+              timestamp: Date.now()
+            });
+          } else if (newState.currentTurnPlayerId === player.id) {
+            const turnOrder = newState.turnOrder || [];
+            let nextIndex = ((newState.turnIndex || 0) + 1) % turnOrder.length;
+            for (let i = 0; i < turnOrder.length; i++) {
+              const candId = turnOrder[nextIndex];
+              const candP = newState.players[candId];
+              if (candId !== player.id && candP && candP.isAlive && (candP.cards || []).some(c => c.isAlive)) {
+                newState.turnIndex = nextIndex;
+                newState.currentTurnPlayerId = candId;
+                newState.status = 'action_turn';
+                break;
+              }
+              nextIndex = (nextIndex + 1) % turnOrder.length;
+            }
+            if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+            newState.actionLogs.push({
+              text: `🚪 [${player.name}] keluar dari permainan. Giliran beralih ke [${newState.players[newState.currentTurnPlayerId]?.name || 'Pemain'}].`,
+              timestamp: Date.now()
+            });
+          }
+          await DB.updateGameState(code, 'coup', newState);
+        }
+      } else if (gameMode === 'spicy') {
+        const state = roomData.spicyGame || roomData.gameState?.spicy;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          newState.turnOrder = (newState.turnOrder || []).filter(id => id !== player.id);
+          if (newState.players && newState.players[player.id]) {
+            newState.players[player.id].hasLeft = true;
+          }
+          if (newState.currentClaim?.playerId === player.id) {
+            newState.currentClaim = null;
+            newState.status = 'playing';
+          }
+          if (newState.turnOrder.length <= 1) {
+            newState.status = 'game_over';
+            newState.winnerPlayerId = newState.turnOrder[0] || null;
+            newState.endReason = 'last_player_standing';
+            if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+            newState.actionLogs.push({
+              text: `👑 [${roomData.players?.[newState.turnOrder[0]]?.name || 'Pemain Terakhir'}] MENANG karena lawan keluar!`,
+              timestamp: Date.now()
+            });
+          } else if (newState.currentTurnPlayerId === player.id) {
+            const nextIdx = (newState.turnIndex || 0) % (newState.turnOrder.length || 1);
+            newState.turnIndex = nextIdx;
+            newState.currentTurnPlayerId = newState.turnOrder[nextIdx];
+            if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+            newState.actionLogs.push({
+              text: `🚪 [${player.name}] keluar dari permainan. Giliran beralih ke [${roomData.players?.[newState.currentTurnPlayerId]?.name || 'Pemain'}].`,
+              timestamp: Date.now()
+            });
+          }
+          await DB.updateGameState(code, 'spicy', newState);
+        }
+      } else if (gameMode === 'trio') {
+        const state = roomData.trioGame || roomData.gameState?.trio;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          newState.turnOrder = (newState.turnOrder || []).filter(id => id !== player.id);
+          newState.revealedSteps = [];
+          newState.mismatchData = null;
+          newState.status = 'playing';
+          if (newState.turnOrder.length <= 1) {
+            newState.status = 'game_over';
+            newState.winnerPlayerId = newState.turnOrder[0] || null;
+            newState.winReason = 'Semua lawan telah keluar dari permainan';
+            if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+            newState.actionLogs.push({
+              text: `👑 [${roomData.players?.[newState.turnOrder[0]]?.name || 'Pemain Terakhir'}] Menang Trio!`,
+              timestamp: Date.now()
+            });
+          } else if (newState.currentTurnPlayerId === player.id) {
+            const nextIdx = (newState.turnIndex || 0) % (newState.turnOrder.length || 1);
+            newState.turnIndex = nextIdx;
+            newState.currentTurnPlayerId = newState.turnOrder[nextIdx];
+          }
+          await DB.updateGameState(code, 'trio', newState);
+        }
+      } else if (gameMode === 'costume-detective') {
+        const state = roomData.costumeDetectiveGame || roomData.gameState?.costumeDetective;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          const charId = newState.playerSecrets?.[player.id];
+          if (charId && newState.boardCharacters?.[charId]) {
+            newState.boardCharacters[charId].isAlive = false;
+          }
+          newState.turnOrder = (newState.turnOrder || []).filter(id => id !== player.id);
+          const livingPlayers = Object.entries(newState.playerSecrets || {}).filter(([pid, cid]) => pid !== player.id && newState.boardCharacters?.[cid]?.isAlive);
+          if (livingPlayers.length <= 1) {
+            newState.status = 'game_over';
+            newState.winnerPlayerId = livingPlayers[0]?.[0] || null;
+          } else if (newState.currentTurnPlayerId === player.id) {
+            const nextIdx = (newState.turnIndex || 0) % (newState.turnOrder.length || 1);
+            newState.turnIndex = nextIdx;
+            newState.currentTurnPlayerId = newState.turnOrder[nextIdx];
+            newState.diceState = null;
+          }
+          await DB.updateGameState(code, 'costumeDetective', newState);
+        }
+      } else if (gameMode === 'secret-hitler') {
+        const state = roomData.secretHitlerGame || roomData.gameState?.secretHitler;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          if (newState.players && newState.players[player.id]) {
+            newState.players[player.id].isAlive = false;
+            newState.players[player.id].hasLeft = true;
+          }
+          if (newState.votes) delete newState.votes[player.id];
+
+          // Cek jika Hitler yang keluar
+          if (newState.players?.[player.id]?.role === 'hitler') {
+            newState.status = 'game_over';
+            newState.phase = 'game_over';
+            newState.winnerTeam = 'liberal';
+            if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+            newState.actionLogs.push({
+              text: `👑 LIBERAL MENANG! Secret Hitler ([${player.name}]) mengundurkan diri!`,
+              timestamp: Date.now()
+            });
+          } else {
+            const livingPlayers = Object.values(newState.players || {}).filter(p => p.isAlive);
+            // Penyelamatan Fase Voting Serentak
+            if (newState.phase === 'voting') {
+              const votedCount = livingPlayers.filter(p => newState.votes && newState.votes[p.id]).length;
+              if (votedCount >= livingPlayers.length && livingPlayers.length > 0) {
+                let jaCount = 0;
+                const voteDetails = {};
+                livingPlayers.forEach(p => {
+                  const v = newState.votes[p.id] || 'nein';
+                  voteDetails[p.id] = { name: p.name, vote: v };
+                  if (v === 'ja') jaCount++;
+                });
+                const passed = jaCount > (livingPlayers.length / 2);
+                newState.phase = 'vote_reveal';
+                newState.lastVoteResult = { jaCount, neinCount: livingPlayers.length - jaCount, passed, voteDetails };
+              }
+            }
+            // Penyelamatan Giliran Kandidat Presiden/Kanselir
+            if (newState.presidentCandidateId === player.id) {
+              const livingOrder = (newState.turnOrder || []).filter(id => newState.players[id]?.isAlive);
+              if (livingOrder.length > 0) {
+                newState.presidentCandidateId = livingOrder[0];
+                newState.chancellorCandidateId = null;
+                newState.phase = 'nomination';
+              }
+            } else if (newState.chancellorCandidateId === player.id && (newState.phase === 'nomination' || newState.phase === 'voting')) {
+              newState.phase = 'nomination';
+              newState.chancellorCandidateId = null;
+            }
+          }
+          await DB.updateGameState(code, 'secretHitler', newState);
+        }
+      } else if (gameMode === 'werewolf') {
+        const state = roomData.werewolfGame || roomData.gameState?.werewolf;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          if (newState.playerRoles && newState.playerRoles[player.id]) {
+            newState.playerRoles[player.id].isAlive = false;
+            newState.playerRoles[player.id].hasLeft = true;
+          }
+          if (newState.nightActions) delete newState.nightActions[player.id];
+          if (newState.dayVotes) delete newState.dayVotes[player.id];
+
+          const living = Object.values(newState.playerRoles || {}).filter(p => p.isAlive);
+          const livingWolves = living.filter(p => p.role === 'werewolf').length;
+          const livingVillagers = living.length - livingWolves;
+
+          if (livingWolves === 0) {
+            newState.phase = 'game_over';
+            newState.winner = 'villagers';
+          } else if (livingWolves >= livingVillagers) {
+            newState.phase = 'game_over';
+            newState.winner = 'werewolves';
+          } else {
+            // Cek penyelesaian fase serentak
+            if (newState.phase === 'night') {
+              const allNightDone = living.length > 0 && living.every(p => newState.nightActions && newState.nightActions[p.id]);
+              if (allNightDone && typeof WerewolfGame !== 'undefined' && typeof WerewolfGame.resolveNight === 'function') {
+                WerewolfGame.resolveNight();
+              }
+            } else if (newState.phase === 'day_voting') {
+              const allVoted = living.length > 0 && living.every(p => newState.dayVotes && newState.dayVotes[p.id]);
+              if (allVoted && typeof WerewolfGame !== 'undefined' && typeof WerewolfGame.resolveDayVoting === 'function') {
+                WerewolfGame.resolveDayVoting();
+              }
+            }
+          }
+          await DB.updateGameState(code, 'werewolf', newState);
+        }
+      } else if (gameMode === 'voting') {
+        const state = roomData.votingGame || roomData.gameState?.voting;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          if (newState.votes) delete newState.votes[player.id];
+          const allVoted = remainingPlayers.length > 0 && remainingPlayers.every(p => newState.votes && newState.votes[p.id]);
+          if (allVoted && newState.status === 'voting') {
+            newState.status = 'results';
+            newState.revealed = true;
+          }
+          await DB.updateGameState(code, 'voting', newState);
+        }
+      } else if (gameMode === 'guess-who') {
+        const state = roomData.guessWhoGame || roomData.gameState?.guessWho;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          if (newState.playerStats && newState.playerStats[player.id]) {
+            newState.playerStats[player.id].isAlive = false;
+            newState.playerStats[player.id].hasLeft = true;
+          }
+          const aliveRemaining = Object.entries(newState.playerStats || {}).filter(([pid, s]) => pid !== player.id && s.isAlive);
+          if (aliveRemaining.length <= 1) {
+            newState.status = 'gameover';
+            newState.winnerId = aliveRemaining[0]?.[0] || null;
+          }
+          await DB.updateGameState(code, 'guessWho', newState);
+        }
+      } else if (gameMode === 'tentang-kita') {
+        const state = roomData.gameState?.tentangKita;
+        if (state && state.selectedAnswerer === player.id) {
+          await DB.updateGameState(code, 'tentangKita', { selectedAnswerer: null });
+        }
+      }
+    } catch (err) {
+      UI.Logger('APP', 'Error during anti-softlock recovery on leave:', err, true);
+    }
+  }
+
+  /**
+   * Fitur Global: Keluar dari Permainan Aktif dengan Konfirmasi Modal & Logika Anti-Macet
+   */
+  function leaveCurrentGame() {
+    if (!currentRoom || !currentPlayer) return;
+
+    if (!currentRoom.currentGame || currentRoom.currentGame === 'lobby') {
+      handleLeaveRoom();
+      return;
+    }
+
+    const isEliminated = isPlayerEliminatedInGame(currentRoom, currentPlayer);
+
+    let modalTitle = '';
+    let modalBody = '';
+
+    if (isEliminated) {
+      modalTitle = '🚪 Keluar dari Permainan';
+      modalBody = `
+        <div class="space-y-4 text-center">
+          <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center text-3xl shadow-sm">
+            🚪
+          </div>
+          <div>
+            <h4 class="font-display font-bold text-base text-slate-800">Sudah Gugur / Tereliminasi</h4>
+            <p class="font-body text-slate-600 text-sm mt-1 leading-relaxed">
+              Kamu sudah gugur di game ini. Ingin keluar ke halaman utama?
+            </p>
+          </div>
+          <p class="text-xs text-slate-400 font-body bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+            Teman-teman yang masih bertahan akan tetap melanjutkan permainan dengan aman tanpa gangguan.
+          </p>
+        </div>
+      `;
+    } else {
+      modalTitle = '⚠️ Konfirmasi Keluar Game';
+      modalBody = `
+        <div class="space-y-4 text-center">
+          <div class="w-16 h-16 mx-auto rounded-3xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center text-3xl shadow-sm">
+            🏃💨
+          </div>
+          <div>
+            <h4 class="font-display font-bold text-base text-slate-800">Permainan Masih Berlangsung!</h4>
+            <p class="font-body text-slate-600 text-sm mt-1 leading-relaxed">
+              Jika kamu keluar sekarang, kamu akan dianggap <b>mengundurkan diri (Gugur)</b> dari ronde ini.
+            </p>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200 text-rose-800 font-body text-xs leading-relaxed text-left space-y-1.5">
+            <p class="font-bold flex items-center gap-1.5"><i data-lucide="shield-check" class="w-4 h-4 text-rose-600"></i> Sistem Anti-Macet (Anti-Softlock):</p>
+            <ul class="list-disc list-inside text-[11px] opacity-90 pl-1 space-y-0.5">
+              <li>Giliran otomatis dimajukan ke pemain aktif berikutnya</li>
+              <li>Status Host dialihkan otomatis jika kamu Host</li>
+              <li>Permainan teman-temanmu di room tetap berjalan aman</li>
+            </ul>
+          </div>
+          <p class="font-display font-bold text-xs text-slate-500">Yakin ingin keluar ke halaman utama?</p>
+        </div>
+      `;
+    }
+
+    const modalFooter = `
+      <button 
+        onclick="UI.closeModal()" 
+        class="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-display font-bold text-xs cursor-pointer active:scale-95 transition-all"
+      >
+        Batal
+      </button>
+      <button 
+        onclick="App.confirmLeaveCurrentGame()" 
+        class="px-5 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-display font-bold text-xs shadow-md shadow-rose-600/25 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+      >
+        <i data-lucide="log-out" class="w-4 h-4"></i>
+        <span>Ya, Keluar Game 🚪</span>
+      </button>
+    `;
+
+    UI.Modal({
+      title: modalTitle,
+      content: modalBody,
+      footer: modalFooter
+    });
+  }
+
+  /**
+   * Eksekusi final keluar dari permainan aktif
+   */
+  async function confirmLeaveCurrentGame() {
+    if (!currentRoom || !currentPlayer) return;
+
+    UI.closeModal();
+    UI.Sound.pop();
+
+    const roomCode = currentRoom.code;
+    const playerId = currentPlayer.id;
+
+    // 1. Eksekusi penyelamatan Anti-Softlock (Giliran, Host, Voting, Menang)
+    await handleAntiSoftlockOnLeave(currentRoom, currentPlayer);
+
+    // 2. Hapus player dari room di Firebase
+    await DB.leaveRoom(roomCode, playerId);
+
+    // 3. Bersihkan sesi lokal & kembali ke Welcome view
+    cleanupInactiveGames('lobby');
+    currentRoom = null;
+    currentPlayer = null;
+    UI.setTheme('lobby');
+    renderWelcomeView();
+    UI.Toast('Kamu telah keluar dari permainan.', 'info');
+  }
+
   function copyRoomCode() {
     if (!currentRoom) return;
     const code = currentRoom.code;
@@ -1107,6 +1548,8 @@ const App = (function () {
     handleCreateRoom,
     handleJoinRoom,
     handleLeaveRoom,
+    leaveCurrentGame,
+    confirmLeaveCurrentGame,
     copyRoomCode,
     selectGame,
     launchSelectedGame,
@@ -1122,6 +1565,12 @@ const App = (function () {
 })();
 
 // Start application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  App.init();
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+  });
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = App;
+}

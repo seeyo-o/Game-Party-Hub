@@ -905,21 +905,37 @@ const SpicyGame = (function () {
         </div>
 
         <!-- Tombol Mulai -->
-        <div class="pt-2">
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           ${isHost ? `
             <button 
               onclick="SpicyGame.startGame()"
-              class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-display font-black text-base shadow-xl shadow-orange-600/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 mx-auto"
+              class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-display font-black text-base shadow-xl shadow-orange-600/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <i data-lucide="play" class="w-5 h-5"></i>
               <span>Bagikan Kartu & Mulai Bermain 🔥</span>
             </button>
           ` : `
-            <div class="p-3.5 rounded-2xl bg-orange-50 border border-orange-200 text-orange-900 font-display font-semibold text-xs flex items-center justify-center gap-2">
+            <div class="p-3.5 rounded-2xl bg-orange-50 border border-orange-200 text-orange-900 font-display font-semibold text-xs flex items-center justify-center gap-2 w-full sm:w-auto">
               <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping"></span>
               <span>Menunggu Host memulai permainan...</span>
             </div>
           `}
+
+          <button 
+            onclick="App.returnToLobby()"
+            class="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-display font-bold text-xs sm:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Kembali ke Lobby</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs sm:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
         </div>
       </div>
     `;
@@ -1058,6 +1074,15 @@ const SpicyGame = (function () {
             >
               <i data-lucide="book-open" class="w-3.5 h-3.5 text-orange-600"></i>
               <span>Aturan</span>
+            </button>
+
+            <button 
+              onclick="App.leaveCurrentGame()" 
+              class="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
+              title="Keluar dari Permainan"
+            >
+              <i data-lucide="log-out" class="w-3.5 h-3.5 text-rose-600"></i>
+              <span>Keluar Game 🚪</span>
             </button>
           </div>
         </div>
@@ -1636,6 +1661,14 @@ const SpicyGame = (function () {
           >
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             <span>Kembali ke Lobby</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
           </button>
         </div>
 

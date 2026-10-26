@@ -1043,12 +1043,12 @@ const SecretHitlerGame = (function () {
         </div>
 
         <!-- Tombol Mulai -->
-        <div class="pt-2">
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           ${isHost ? `
             <button 
               onclick="SecretHitlerGame.startGame()"
               ${count < 5 ? 'disabled' : ''}
-              class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-red-600 to-stone-900 hover:from-red-700 hover:to-stone-950 text-white font-display font-black text-base shadow-xl shadow-red-600/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 mx-auto ${
+              class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-red-600 to-stone-900 hover:from-red-700 hover:to-stone-950 text-white font-display font-black text-base shadow-xl shadow-red-600/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 ${
                 count < 5 ? 'opacity-50 cursor-not-allowed' : ''
               }"
             >
@@ -1056,11 +1056,27 @@ const SecretHitlerGame = (function () {
               <span>Bagikan Peran & Mulai Sidang Parlemen 🏛️</span>
             </button>
           ` : `
-            <div class="p-3.5 rounded-2xl bg-stone-100 border border-stone-200 text-stone-700 font-display font-semibold text-xs flex items-center justify-center gap-2">
+            <div class="p-3.5 rounded-2xl bg-stone-100 border border-stone-200 text-stone-700 font-display font-semibold text-xs flex items-center justify-center gap-2 w-full sm:w-auto">
               <span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping"></span>
               <span>Menunggu Host memulai pemilihan...</span>
             </div>
           `}
+
+          <button 
+            onclick="App.returnToLobby()"
+            class="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-display font-bold text-xs sm:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Kembali ke Lobby</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs sm:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
         </div>
 
       </div>
@@ -1276,6 +1292,15 @@ const SecretHitlerGame = (function () {
             >
               <i data-lucide="book-open" class="w-4 h-4 text-red-600"></i>
               <span>Aturan</span>
+            </button>
+
+            <button 
+              onclick="App.leaveCurrentGame()" 
+              class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs"
+              title="Keluar dari Permainan"
+            >
+              <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+              <span>Keluar Game 🚪</span>
             </button>
           </div>
         </div>
@@ -1570,8 +1595,9 @@ const SecretHitlerGame = (function () {
               </div>
             `}
           ` : `
-            <div class="text-xs text-stone-400 italic font-body">
-              Kamu telah gugur dan tidak memiliki hak suara.
+            <div class="p-3.5 rounded-2xl bg-stone-100 border border-stone-200 text-center space-y-2">
+              <p class="text-xs text-stone-500 font-body">Kamu telah dieksekusi (gugur) dari Parlemen dan sedang menjadi penonton.</p>
+              <button onclick="App.leaveCurrentGame()" class="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-display font-bold text-xs shadow-sm cursor-pointer transition-all active:scale-95 inline-flex items-center gap-1.5"><i data-lucide="log-out" class="w-3.5 h-3.5"></i><span>Keluar Game 🚪</span></button>
             </div>
           `}
         </div>
@@ -2007,6 +2033,14 @@ const SecretHitlerGame = (function () {
           >
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             <span>Kembali ke Lobby</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
           </button>
         </div>
 

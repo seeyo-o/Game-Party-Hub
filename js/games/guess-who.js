@@ -2136,6 +2136,14 @@ const GuessWhoGame = (function () {
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             <span>Kembali ke Lobby</span>
           </button>
+          <button 
+            onclick="App.leaveCurrentGame()" 
+            class="px-4 py-2 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs"
+            title="Keluar dari Permainan"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
           <div class="flex items-center gap-2 bg-white/90 px-4 py-1.5 rounded-2xl border-2 border-sky-500/20 text-xs font-display font-bold text-sky-900 shadow-sm">
             <span>ROOM:</span>
             <span class="text-sky-700 font-extrabold tracking-widest">${roomData.code}</span>
@@ -2372,6 +2380,14 @@ const GuessWhoGame = (function () {
             >
               <i data-lucide="arrow-left" class="w-4 h-4"></i>
               <span>Kembali</span>
+            </button>
+            <button 
+              onclick="App.leaveCurrentGame()" 
+              class="px-3.5 py-2 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs sm:text-sm flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs"
+              title="Keluar dari Permainan"
+            >
+              <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+              <span>Keluar Game 🚪</span>
             </button>
 
             <!-- Status Hidup/Gugur -->
@@ -2983,6 +2999,12 @@ const GuessWhoGame = (function () {
           class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-display font-bold text-xs"
         >
           Kembali ke Lobby 🏠
+        </button>
+        <button 
+          onclick="App.leaveCurrentGame()" 
+          class="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs"
+        >
+          Keluar Game 🚪
         </button>
       `;
 

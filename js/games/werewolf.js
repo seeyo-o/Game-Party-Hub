@@ -352,6 +352,13 @@ const WerewolfGame = (function () {
           >
             Kembali ke Lobby
           </button>
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-5 py-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
         </div>
       </div>
     `;
@@ -539,11 +546,21 @@ const WerewolfGame = (function () {
           </div>
         </div>
 
-        <div class="bg-indigo-900/60 border border-indigo-400/30 px-3.5 py-2 rounded-2xl text-center shrink-0">
-          <span class="text-[10px] font-display font-semibold text-indigo-300 block">Status Malam</span>
-          <span class="font-display font-black text-sm text-amber-300">
-            ${completedNightActionsCount} / ${livingCount} Selesai
-          </span>
+        <div class="flex items-center gap-2">
+          <div class="bg-indigo-900/60 border border-indigo-400/30 px-3.5 py-2 rounded-2xl text-center shrink-0">
+            <span class="text-[10px] font-display font-semibold text-indigo-300 block">Status Malam</span>
+            <span class="font-display font-black text-sm text-amber-300">
+              ${completedNightActionsCount} / ${livingCount} Selesai
+            </span>
+          </div>
+          <button 
+            onclick="App.leaveCurrentGame()" 
+            class="px-3 py-2 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 font-display font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0"
+            title="Keluar dari Permainan"
+          >
+            <i data-lucide="log-out" class="w-3.5 h-3.5 text-rose-300"></i>
+            <span>Keluar 🚪</span>
+          </button>
         </div>
       </div>
     `;
@@ -559,6 +576,13 @@ const WerewolfGame = (function () {
           <p class="font-body text-xs text-slate-500 max-w-sm mx-auto">
             Tetap mute mic di Discord dan saksikan pertarungan antara warga dan Werewolf secara rahasia.
           </p>
+          <button 
+            onclick="App.leaveCurrentGame()" 
+            class="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game Sekarang 🚪</span>
+          </button>
         </div>
       `;
     } else if (hasSubmittedMyAction) {
@@ -885,9 +909,19 @@ const WerewolfGame = (function () {
               </h2>
             </div>
           </div>
-          <span class="px-3 py-1 rounded-full bg-white/80 text-amber-900 text-xs font-display font-extrabold shadow-2xs">
-            🎙️ DISCORD OPEN MIC!
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="px-3 py-1 rounded-full bg-white/80 text-amber-900 text-xs font-display font-extrabold shadow-2xs">
+              🎙️ DISCORD OPEN MIC!
+            </span>
+            <button 
+              onclick="App.leaveCurrentGame()" 
+              class="px-3 py-1 rounded-full bg-white/80 hover:bg-white text-rose-700 text-xs font-display font-extrabold shadow-2xs cursor-pointer active:scale-95 transition-all flex items-center gap-1"
+              title="Keluar dari Permainan"
+            >
+              <i data-lucide="log-out" class="w-3.5 h-3.5 text-rose-600"></i>
+              <span>Keluar 🚪</span>
+            </button>
+          </div>
         </div>
 
         ${reportBoxHTML}
@@ -1230,6 +1264,14 @@ const WerewolfGame = (function () {
           >
             <i data-lucide="home" class="w-4 h-4"></i>
             <span>Kembali ke Lobby 🏠</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
           </button>
         </div>
       </div>

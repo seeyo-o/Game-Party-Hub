@@ -393,7 +393,7 @@ const TrioGame = (function () {
       if (stepNumber === 1) {
         newState.revealedSteps = [stepEntry];
         newState.actionLogs.push({
-          text: `🔍 [${activePlayer.name}] membuka Kartu Ke-1: [${stepEntry.displayName}] bernilai [${revealedCard.number}].`,
+          text: `🔍 [${activePlayer.name}] membuka Kartu Ke-1: [${stepEntry.displayName}].`,
           timestamp: Date.now()
         });
         await DB.updateGameState(currentRoom.code, 'trio', newState);
@@ -409,7 +409,7 @@ const TrioGame = (function () {
           UI.Sound.flip();
           newState.revealedSteps.push(stepEntry);
           newState.actionLogs.push({
-            text: `✨ [${activePlayer.name}] membuka Kartu Ke-2: [${stepEntry.displayName}] bernilai [${revealedCard.number}]! Angka KEMBAR! Lanjut ke kartu ke-3!`,
+            text: `✨ [${activePlayer.name}] membuka Kartu Ke-2: [${stepEntry.displayName}]! Angka KEMBAR! Lanjut ke kartu ke-3!`,
             timestamp: Date.now()
           });
           await DB.updateGameState(currentRoom.code, 'trio', newState);
@@ -507,9 +507,8 @@ const TrioGame = (function () {
       expireAt: Date.now() + 3500 // Jeda 3,5 detik
     };
 
-    const cardValues = revealedSteps.map(s => s.card.number).join(', ');
     state.actionLogs.push({
-      text: `❌ [${activePlayer.name}] membuka angka berbeda: [${cardValues}]. Jeda 3,5 detik untuk menghafal posisi kartu...`,
+      text: `❌ [${activePlayer.name}] belum menemukan kartu yang cocok. Kartu akan tertutup kembali...`,
       timestamp: Date.now()
     });
   }
@@ -668,21 +667,37 @@ const TrioGame = (function () {
         </div>
 
         <!-- Tombol Mulai -->
-        <div class="pt-2">
+        <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           ${isHost ? `
             <button 
               onclick="TrioGame.startGame()"
-              class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-pink-600 hover:from-cyan-700 hover:to-pink-700 text-white font-display font-black text-base shadow-xl shadow-cyan-600/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 mx-auto"
+              class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-600 to-pink-600 hover:from-cyan-700 hover:to-pink-700 text-white font-display font-black text-base shadow-xl shadow-cyan-600/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <i data-lucide="play" class="w-5 h-5"></i>
               <span>Bagikan 36 Kartu & Mulai Trio! 🎲</span>
             </button>
           ` : `
-            <div class="p-3.5 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-900 font-display font-semibold text-xs flex items-center justify-center gap-2">
+            <div class="p-3.5 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-900 font-display font-semibold text-xs flex items-center justify-center gap-2 w-full sm:w-auto">
               <span class="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-ping"></span>
               <span>Menunggu Host memilih mode dan memulai permainan...</span>
             </div>
           `}
+          
+          <button 
+            onclick="App.returnToLobby()"
+            class="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-display font-bold text-xs sm:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Kembali ke Lobby</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs sm:text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
         </div>
       </div>
     `;
@@ -927,14 +942,22 @@ const TrioGame = (function () {
             </div>
           </div>
 
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 sm:gap-3">
             <button 
               onclick="GameRules.open('trio', 'lobby')" 
-              class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-display font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-display font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
               title="Lihat Aturan Main"
             >
               <i data-lucide="book-open" class="w-4 h-4 text-cyan-600"></i>
               <span>Panduan</span>
+            </button>
+            <button 
+              onclick="App.leaveCurrentGame()" 
+              class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs"
+              title="Keluar dari Permainan"
+            >
+              <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+              <span>Keluar Game 🚪</span>
             </button>
           </div>
         </div>
@@ -945,7 +968,7 @@ const TrioGame = (function () {
             <div class="flex items-center gap-2.5">
               <span class="text-2xl">⏱️</span>
               <div>
-                <h4 class="font-black text-sm uppercase tracking-wide">Angka Berbeda! Hafalkan Posisi Kartu</h4>
+                <h4 class="font-black text-sm uppercase tracking-wide">❌ Belum cocok! Hafalkan posisinya sebelum tertutup kembali...</h4>
                 <p class="font-body text-xs text-rose-100">Kedua kartu akan ditutup kembali dalam 3,5 detik...</p>
               </div>
             </div>
@@ -961,7 +984,7 @@ const TrioGame = (function () {
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full ${isMyTurn ? 'bg-cyan-500 animate-ping' : 'bg-slate-300'}"></span>
               <span class="font-display font-bold text-xs text-slate-700">
-                ${isMyTurn ? '🎯 GILIRANMU! Buka kartu dari Meja atau minta kartu Ujung (Terkecil/Terbesar) pemain!' : `Menunggu giliran [${turnPlayer?.name || 'Pemain Lain'}]...`}
+                ${isMyTurn ? `🎯 Giliranmu: Membuka kartu ke-${steps.length + 1}...` : `Giliran [${turnPlayer?.name || 'Pemain Lain'}]: Membuka kartu ke-${steps.length + 1}...`}
               </span>
             </div>
             <span class="text-[11px] font-display font-bold text-slate-400">
@@ -1022,21 +1045,6 @@ const TrioGame = (function () {
 
           <div class="space-y-3">
             ${playersHandsHTML}
-          </div>
-        </div>
-
-        <!-- Log Aktivitas -->
-        <div class="bg-white rounded-3xl border-2 border-slate-900/10 p-5 shadow-joyful">
-          <h4 class="font-display font-bold text-xs text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <i data-lucide="history" class="w-3.5 h-3.5 text-cyan-600"></i>
-            <span>Riwayat Pembukaan Kartu</span>
-          </h4>
-          <div class="space-y-1.5 overflow-y-auto max-h-36 pr-1 font-body text-xs text-slate-600">
-            ${(state.actionLogs || []).slice(-6).reverse().map(log => `
-              <div class="p-2 rounded-xl bg-slate-50 border border-slate-200/60 leading-relaxed">
-                ${log.text}
-              </div>
-            `).join('')}
           </div>
         </div>
 
@@ -1156,6 +1164,14 @@ const TrioGame = (function () {
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             <span>Kembali ke Lobby</span>
           </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
         </div>
 
       </div>
@@ -1195,4 +1211,8 @@ const TrioGame = (function () {
 
 if (typeof window !== 'undefined') {
   window.TrioGame = TrioGame;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = TrioGame;
 }

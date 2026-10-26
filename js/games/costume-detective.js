@@ -257,6 +257,13 @@ const CostumeDetectiveGame = (function () {
           >
             Kembali ke Lobby
           </button>
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
+          </button>
         </div>
       </div>
     `;
@@ -326,6 +333,14 @@ const CostumeDetectiveGame = (function () {
           >
             <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
             <span>Aturan</span>
+          </button>
+          <button 
+            onclick="App.leaveCurrentGame()" 
+            class="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 font-display font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            title="Keluar dari Permainan"
+          >
+            <i data-lucide="log-out" class="w-3.5 h-3.5 text-rose-300"></i>
+            <span>Keluar Game 🚪</span>
           </button>
         </div>
       </div>
@@ -659,6 +674,14 @@ const CostumeDetectiveGame = (function () {
           >
             <i data-lucide="home" class="w-4 h-4"></i>
             <span>Kembali ke Lobby 🏠</span>
+          </button>
+
+          <button 
+            onclick="App.leaveCurrentGame()"
+            class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-display font-bold text-sm active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-600"></i>
+            <span>Keluar Game 🚪</span>
           </button>
         </div>
       </div>

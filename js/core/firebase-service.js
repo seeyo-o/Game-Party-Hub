@@ -701,6 +701,13 @@ const DB = (function () {
               if (Object.keys(roomData.players).length === 0) {
                 localStorage.removeItem(`mock_room_${code}`);
               } else {
+                if (roomData.hostId === playerId) {
+                  const rem = Object.values(roomData.players);
+                  if (rem.length > 0) {
+                    rem[0].isHost = true;
+                    roomData.hostId = rem[0].id;
+                  }
+                }
                 localStorage.setItem(`mock_room_${code}`, JSON.stringify(roomData));
                 if (fallbackChannel) {
                   fallbackChannel.postMessage({ type: 'ROOM_UPDATE', code, data: roomData });
@@ -717,6 +724,14 @@ const DB = (function () {
         UI.Logger('FIREBASE', 'Error leaving room', error, true);
         return false;
       }
+    },
+
+    getDb() {
+      return dbInstance;
+    },
+
+    isOffline() {
+      return isOfflineMode;
     }
   };
 })();
