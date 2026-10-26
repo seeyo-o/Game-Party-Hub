@@ -627,6 +627,95 @@ const GameRules = (function () {
           desc: 'Pada saat 5 Kebijakan Fasis telah disahkan, Presiden dan Kanselir dapat menyetujui Hak Veto bersama untuk membuang ketiga kartu kebijakan jika keduanya sepakat.'
         }
       ]
+    },
+    'cash-n-guns': {
+      id: 'cash-n-guns',
+      title: "Ca$h 'n Guns",
+      subtitle: 'Gertakan Todongan Pistol & Pembagian Harta Rampokan',
+      icon: 'crosshair',
+      players: '4 - 8 Pemain (Bisa Uji Coba 3+)',
+      duration: '20 - 30 Menit (8 Ronde)',
+      difficulty: 'Bluffing & Ketegangan (Seru & Rusuh)',
+      theme: 'cash-n-guns',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      iconBg: 'bg-slate-900 text-white',
+      accentColor: 'text-emerald-600',
+      discordPrep: [
+        'Kumpul di 1 Voice Channel Discord. Hitung mundur "1... 2... 3... TODONG!" dan "1... 2... 3... TIARAP!" sangat seru disuarakan serentak via mikrofon!',
+        'Gunakan kamera/webcam (opsional tapi sangat disarankan) untuk melihat ekspresi panik teman saat pistolmu membidik tepat ke arah mereka!',
+        'Aturan Bluffing: Jangan pernah memberi tahu apakah kamu memasang peluru BANG atau CLICK sampai fase tembakan dibuka!'
+      ],
+      winCondition: 'Hanya pemain yang BERTAHAN HIDUP (kurang dari 3 luka) setelah ronde ke-8 yang dihitung hartanya. Pemain hidup dengan TOTAL KEKAYAAN TERTINGGI (Uang Tunai + Berlian + Bonus Mayoritas Berlian $60.000 + Set Lukisan) dinobatkan sebagai Gangster Paling Tajir & Pemenang Mutlak!',
+      steps: [
+        {
+          num: '1',
+          title: 'Fase 1: Buka 8 Harta Rampokan',
+          desc: 'Di awal tiap ronde, 8 kartu rampokan dibuka ke meja tengah bersama Meja/Token Godfather. Harta terdiri dari uang tunai, berlian, lukisan berharga, kotak P3K, dan magasin peluru.'
+        },
+        {
+          num: '2',
+          title: 'Fase 2: Todong Pistol (Hold-Up!)',
+          desc: 'Setiap pemain hidup diam-diam memilih 1 kartu peluru dari tangan (CLICK! atau BANG!) dan 1 target gangster yang ingin ditodong. Saat semua siap, todongan pistol dibuka bersamaan ke layar!'
+        },
+        {
+          num: '3',
+          title: 'Fase 3: Hak Istimewa Godfather',
+          desc: 'Godfather yang berkuasa berhak memerintahkan 1 pemain untuk mengalihkan todongan pistolnya ke sasaran lain (atau Godfather memilih pass/tidak menggunakan haknya).'
+        },
+        {
+          num: '4',
+          title: 'Fase 4: Berdiri atau Tiarap? (Courage)',
+          desc: 'Pemain serentak memutuskan: "TETAP BERDIRI" (berani ambil risiko ditembak demi ikut pembagian harta) atau "TIARAP" (aman dari tembakan ronde ini, tetapi kehilangan hak mengambil harta dan peluru tetap terbuang).'
+        },
+        {
+          num: '5',
+          title: 'Fase 5: Tembak-Menembak (Bang! Bang!)',
+          desc: 'Kartu peluru pemain yang tetap berdiri dibuka! CLICK berarti peluru kosong. BANG mengenai target yang tetap berdiri (+1 Luka dan tersungkur dari pembagian harta ronde ini). Pemain dengan 3 Luka gugur permanen!'
+        },
+        {
+          num: '6',
+          title: 'Fase 6: Pembagian Hasil Rampokan',
+          desc: 'Semua gangster yang berdiri dan selamat tanpa terkena peluru BANG bergantian mengambil 1 harta dari meja, dimulai dari Godfather (searah jarum jam) hingga ke-8 harta habis.'
+        }
+      ],
+      specialRules: [
+        {
+          name: '💥 Kartu Peluru: BANG! vs CLICK!',
+          badge: 'Budget Peluru',
+          badgeColor: 'bg-rose-100 text-rose-800',
+          desc: 'Setiap pemain memulai dengan 8 kartu peluru: 5 CLICK! (kosong) dan 3 BANG! (nyata). Peluru yang dimainkan langsung dibuang selamanya. Kamu harus menghemat 3 peluru BANG-mu selama 8 ronde!'
+        },
+        {
+          name: '🩸 3 Luka = Mati Permanen',
+          badge: 'Eliminasi',
+          badgeColor: 'bg-red-100 text-red-800',
+          desc: 'Setiap kali tertembak peluru BANG saat berdiri, kamu menerima 1 Luka. Begitu mencapai 3 Luka, kamu mati seketika dan kehilangan seluruh harta rampokan!'
+        },
+        {
+          name: '💎 Bonus Mayoritas Berlian ($60.000)',
+          badge: 'Koleksi Harta',
+          badgeColor: 'bg-cyan-100 text-cyan-800',
+          desc: 'Kartu berlian memiliki nilai nominal ($1k, $5k, $10k). Di akhir ronde 8, pemain hidup yang mengumpulkan lembar kartu berlian terbanyak mendapat BONUS TAMBAHAN $60.000!'
+        },
+        {
+          name: '🖼️ Tangga Nilai Lukisan',
+          badge: 'Set Collection',
+          badgeColor: 'bg-amber-100 text-amber-800',
+          desc: 'Semakin banyak lukisan yang kamu kumpulkan, nilainya melesat eksponensial: 1=$4k, 2=$12k, 3=$30k, 4=$60k, 5=$100k, 6=$150k, 7=$200k, 8=$300k, 9=$400k, 10=$500k!'
+        },
+        {
+          name: '🧰 Kotak P3K & Magasin Peluru 🔫',
+          badge: 'Item Spesial',
+          badgeColor: 'bg-emerald-100 text-emerald-800',
+          desc: 'Mengambil Kotak P3K langsung menyembuhkan SELURUH luka kembali ke 0! Mengambil Magasin Peluru langsung menambahkan 1 kartu BANG! baru ke tanganmu.'
+        },
+        {
+          name: '🎩 Meja Godfather',
+          badge: 'Kekuasaan',
+          badgeColor: 'bg-indigo-100 text-indigo-800',
+          desc: 'Pemain yang memilih Meja Godfather saat pembagian harta akan memegang kendali Godfather di ronde berikutnya: mengalihkan todongan lawan dan mengambil harta pertama kali!'
+        }
+      ]
     }
   };
 

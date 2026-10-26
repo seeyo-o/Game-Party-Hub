@@ -187,6 +187,23 @@ body[data-theme="secret-hitler"] {
   --theme-gradient: linear-gradient(135deg, #DC2626 0%, #2563EB 100%);
 }
 
+/* 11. CA$H 'N GUNS THEME ("Ca$h 'n Guns: Todongan Pistol & Bagi Rampokan") */
+body[data-theme="cash-n-guns"] {
+  --color-bg: #FAF7F2;           /* Heist Cream */
+  --color-surface: #FFFFFF;
+  --color-primary: #1E293B;       /* Gangster Charcoal */
+  --color-primary-hover: #0F172A;
+  --color-primary-light: #F1F5F9;
+  --color-accent: #16A34A;        /* Dollar Green */
+  --color-accent-hover: #15803D;
+  --color-accent-red: #E11D48;    /* Bullet Red */
+  --color-text: #1E293B;
+  --color-muted: #64748B;
+  --color-border: rgba(30, 41, 59, 0.16);
+  --color-ring: rgba(30, 41, 59, 0.25);
+  --theme-gradient: linear-gradient(135deg, #1E293B 0%, #16A34A 100%);
+}
+
 /* ==========================================================================
    BASE & TYPOGRAPHY
    ========================================================================== */

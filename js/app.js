@@ -113,6 +113,17 @@ const App = (function () {
       theme: 'secret-hitler',
       colorClasses: 'from-rose-500/10 to-blue-500/10 border-rose-300 text-rose-900',
       description: 'Pemilihan Presiden, Kanselir, pengesahan undang-undang rahasia, serta perburuan identitas Secret Hitler di ruang sidang Discord.'
+    },
+    {
+      id: 'cash-n-guns',
+      title: "Ca$h 'n Guns",
+      subtitle: 'Todongan Pistol & Bagi Rampokan',
+      badge: 'BLUFFING',
+      badgeVariant: 'accent',
+      icon: 'crosshair',
+      theme: 'cash-n-guns',
+      colorClasses: 'from-slate-900/10 to-emerald-500/10 border-slate-300 text-slate-900',
+      description: "Gertakan todongan pistol ala gangster untuk memperebutkan harta rampokan selama 8 ronde!"
     }
   ];
 
@@ -179,7 +190,8 @@ const App = (function () {
       { id: 'costume-detective', module: typeof CostumeDetectiveGame !== 'undefined' ? CostumeDetectiveGame : null },
       { id: 'spicy', module: typeof SpicyGame !== 'undefined' ? SpicyGame : null },
       { id: 'trio', module: typeof TrioGame !== 'undefined' ? TrioGame : null },
-      { id: 'secret-hitler', module: typeof SecretHitlerGame !== 'undefined' ? SecretHitlerGame : null }
+      { id: 'secret-hitler', module: typeof SecretHitlerGame !== 'undefined' ? SecretHitlerGame : null },
+      { id: 'cash-n-guns', module: typeof CashNGunsGame !== 'undefined' ? CashNGunsGame : null }
     ];
 
     registry.forEach(({ id, module }) => {
@@ -242,6 +254,9 @@ const App = (function () {
     } else if (gameMode === 'secret-hitler') {
       if (typeof SecretHitlerGame.onStateChange === 'function') SecretHitlerGame.onStateChange(currentRoom);
       SecretHitlerGame.render(appEl, currentRoom, currentPlayer);
+    } else if (gameMode === 'cash-n-guns') {
+      if (typeof CashNGunsGame.onStateChange === 'function') CashNGunsGame.onStateChange(currentRoom);
+      CashNGunsGame.render(appEl, currentRoom, currentPlayer);
     }
   }
 
@@ -542,6 +557,30 @@ const App = (function () {
               <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Intrik pemilihan Presiden, Kanselir, undang-undang rahasia, dan kudeta tersembunyi.</p>
             </div>
             <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-rose-600 group-hover:text-rose-700">
+              <span>📖 Klik untuk Cara Bermain</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+          </div>
+
+          <!-- 10. Ca$h 'n Guns -->
+          <div 
+            onclick="GameRules.open('cash-n-guns', 'welcome')"
+            class="p-5 rounded-3xl bg-white/90 border-2 border-slate-900/5 shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group flex flex-col justify-between select-none"
+            title="Klik untuk melihat cara bermain Ca$h 'n Guns"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-2xl bg-slate-900 text-emerald-400 flex items-center justify-center shadow-xs">
+                  <span class="text-lg">🔫</span>
+                </div>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-display font-bold">
+                  Todong & Rampok
+                </span>
+              </div>
+              <h4 class="font-display font-bold text-base text-slate-800 group-hover:text-emerald-600 transition-colors">Ca$h 'n Guns</h4>
+              <p class="font-body text-xs text-slate-500 mt-1 leading-relaxed">Gertakan todongan pistol ala gangster untuk memperebutkan harta rampokan selama 8 ronde!</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-display font-bold text-emerald-600 group-hover:text-emerald-700">
               <span>📖 Klik untuk Cara Bermain</span>
               <span class="group-hover:translate-x-1 transition-transform">→</span>
             </div>
@@ -964,6 +1003,13 @@ const App = (function () {
       return false;
     }
 
+    if (gameMode === 'cash-n-guns') {
+      const state = roomData.cashNGunsGame || roomData.gameState?.cashNGuns || {};
+      const p = (state.players || {})[player.id];
+      if (p && p.isAlive === false) return true;
+      return false;
+    }
+
     if (gameMode === 'costume-detective') {
       const state = roomData.costumeDetectiveGame || roomData.gameState?.costumeDetective || {};
       const charId = (state.playerSecrets || {})[player.id];
@@ -1189,6 +1235,83 @@ const App = (function () {
             }
           }
           await DB.updateGameState(code, 'secretHitler', newState);
+        }
+      } else if (gameMode === 'cash-n-guns') {
+        const state = roomData.cashNGunsGame || roomData.gameState?.cashNGuns;
+        if (state) {
+          const newState = JSON.parse(JSON.stringify(state));
+          if (newState.players && newState.players[player.id]) {
+            newState.players[player.id].isAlive = false;
+            newState.players[player.id].hasLeft = true;
+          }
+          if (newState.holdUpChoices) delete newState.holdUpChoices[player.id];
+          if (newState.courageChoices) delete newState.courageChoices[player.id];
+          
+          const livingPlayers = Object.values(newState.players || {}).filter(p => p.isAlive);
+          
+          if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+          newState.actionLogs.push({
+            text: `🚪 [${player.name}] keluar dari permainan (Gugur).`,
+            timestamp: Date.now()
+          });
+
+          // Jika pemain hidup tersisa <= 1: Game Over
+          if (livingPlayers.length <= 1) {
+            newState.status = 'game_over';
+            newState.phase = 'game_over';
+            newState.endReason = 'last_player_standing';
+            if (livingPlayers.length === 1) {
+              newState.winnerPlayerId = livingPlayers[0].id;
+              newState.actionLogs.push({
+                text: `👑 [${livingPlayers[0].name}] adalah satu-satunya gangster yang bertahan hidup!`,
+                timestamp: Date.now()
+              });
+            }
+          } else {
+            // Anti-softlock: Fase Todong Pistol
+            if (newState.phase === 'hold_up') {
+              const allReady = livingPlayers.length > 0 && livingPlayers.every(p => newState.holdUpChoices && newState.holdUpChoices[p.id]);
+              if (allReady) {
+                const godAlive = newState.players[newState.godfatherId]?.isAlive;
+                newState.phase = godAlive ? 'godfather_privilege' : 'courage';
+              }
+            }
+            // Anti-softlock: Hak Istimewa Godfather
+            else if (newState.phase === 'godfather_privilege') {
+              if (newState.godfatherId === player.id) {
+                newState.godfatherId = livingPlayers[0]?.id || null;
+                newState.godfatherChangeOrder = null;
+                newState.phase = 'courage';
+              } else if (newState.godfatherChangeOrder?.targetPlayerId === player.id) {
+                newState.godfatherChangeOrder = null;
+                newState.phase = 'courage';
+              }
+            }
+            // Anti-softlock: Fase Berdiri atau Tiarap
+            else if (newState.phase === 'courage') {
+              const allCourage = livingPlayers.length > 0 && livingPlayers.every(p => newState.courageChoices && newState.courageChoices[p.id]);
+              if (allCourage) {
+                newState.phase = 'shootout';
+              }
+            }
+            // Anti-softlock: Pembagian Harta
+            else if (newState.phase === 'loot_sharing') {
+              if (newState.currentPickerId === player.id) {
+                const eligible = (newState.eligiblePickers || []).filter(id => id !== player.id && newState.players[id]?.isAlive);
+                newState.eligiblePickers = eligible;
+                if (eligible.length > 0) {
+                  const currIdx = (newState.pickerIndex || 0) % eligible.length;
+                  newState.pickerIndex = currIdx;
+                  newState.currentPickerId = eligible[currIdx];
+                } else {
+                  newState.phase = 'round_summary';
+                }
+              } else {
+                newState.eligiblePickers = (newState.eligiblePickers || []).filter(id => id !== player.id);
+              }
+            }
+          }
+          await DB.updateGameState(code, 'cashNGuns', newState);
         }
       } else if (gameMode === 'werewolf') {
         const state = roomData.werewolfGame || roomData.gameState?.werewolf;
