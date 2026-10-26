@@ -1913,6 +1913,329 @@ const GuessWhoGame = (function () {
   ]
 },
 
+    // ========================================================================
+    // FOOTBALL STARS DATASET (198 PEMAIN: 50 Klasik, 50 2010s, 50 Modern, 48 Timnas)
+    // ========================================================================
+    FOOTBALL_PLAYERS: {
+      era_classic: [
+        { id: 'cla_1', name: 'Ronaldo Nazario', wikiSlug: 'Ronaldo_(Brazilian_footballer)', role: 'Striker Legendaris Brazil & Real Madrid', badge: '👑 Classic' },
+        { id: 'cla_2', name: 'Ronaldinho', wikiSlug: 'Ronaldinho', role: 'Penyihir Samba Barcelona & Brazil', badge: '👑 Classic' },
+        { id: 'cla_3', name: 'Zinedine Zidane', wikiSlug: 'Zinedine_Zidane', role: 'Maestro Prancis & Juventus/Real Madrid', badge: '👑 Classic' },
+        { id: 'cla_4', name: 'David Beckham', wikiSlug: 'David_Beckham', role: 'Spesialis Freekick Inggris & Man United', badge: '👑 Classic' },
+        { id: 'cla_5', name: 'Thierry Henry', wikiSlug: 'Thierry_Henry', role: 'King Arsenal & Prancis', badge: '👑 Classic' },
+        { id: 'cla_6', name: 'Paolo Maldini', wikiSlug: 'Paolo_Maldini', role: 'Il Capitano AC Milan & Italia', badge: '👑 Classic' },
+        { id: 'cla_7', name: 'Roberto Carlos', wikiSlug: 'Roberto_Carlos', role: 'Tendangan Meriam Brazil & Real Madrid', badge: '👑 Classic' },
+        { id: 'cla_8', name: 'Cafu', wikiSlug: 'Cafu', role: 'Bek Kanan Legendaris Brazil & AC Milan', badge: '👑 Classic' },
+        { id: 'cla_9', name: 'Rivaldo', wikiSlug: 'Rivaldo', role: 'Playmaker Ballon d\'Or Brazil & Barcelona', badge: '👑 Classic' },
+        { id: 'cla_10', name: 'Kaka', wikiSlug: 'Kaká', role: 'Gelandang Emas AC Milan & Brazil', badge: '👑 Classic' },
+        { id: 'cla_11', name: 'Alessandro Del Piero', wikiSlug: 'Alessandro_Del_Piero', role: 'Pinturicchio Juventus & Italia', badge: '👑 Classic' },
+        { id: 'cla_12', name: 'Francesco Totti', wikiSlug: 'Francesco_Totti', role: 'Pangeran AS Roma & Italia', badge: '👑 Classic' },
+        { id: 'cla_13', name: 'Andrea Pirlo', wikiSlug: 'Andrea_Pirlo', role: 'Regista Maestro AC Milan/Juventus & Italia', badge: '👑 Classic' },
+        { id: 'cla_14', name: 'Gianluigi Buffon', wikiSlug: 'Gianluigi_Buffon', role: 'Kiper Legenda Juventus & Italia', badge: '👑 Classic' },
+        { id: 'cla_15', name: 'Iker Casillas', wikiSlug: 'Iker_Casillas', role: 'San Iker Real Madrid & Spanyol', badge: '👑 Classic' },
+        { id: 'cla_16', name: 'Carles Puyol', wikiSlug: 'Carles_Puyol', role: 'Kapten Karang Barcelona & Spanyol', badge: '👑 Classic' },
+        { id: 'cla_17', name: 'Raul Gonzalez', wikiSlug: 'Raúl_(footballer)', role: 'Pangeran Bernabeu Real Madrid & Spanyol', badge: '👑 Classic' },
+        { id: 'cla_18', name: 'Luis Figo', wikiSlug: 'Luís_Figo', role: 'Winger Emas Portugal & Real Madrid/Barca', badge: '👑 Classic' },
+        { id: 'cla_19', name: 'Pavel Nedved', wikiSlug: 'Pavel_Nedvěd', role: 'Kuda Ceko Juventus & Ballon d\'Or', badge: '👑 Classic' },
+        { id: 'cla_20', name: 'Andriy Shevchenko', wikiSlug: 'Andriy_Shevchenko', role: 'Striker Maut AC Milan & Ukraina', badge: '👑 Classic' },
+        { id: 'cla_21', name: 'Didier Drogba', wikiSlug: 'Didier_Drogba', role: 'Pahlawan Chelsea & Pantai Gading', badge: '👑 Classic' },
+        { id: 'cla_22', name: 'Frank Lampard', wikiSlug: 'Frank_Lampard', role: 'Top Skorer Abadi Chelsea & Inggris', badge: '👑 Classic' },
+        { id: 'cla_23', name: 'Steven Gerrard', wikiSlug: 'Steven_Gerrard', role: 'Kapten Ikonik Liverpool & Inggris', badge: '👑 Classic' },
+        { id: 'cla_24', name: 'Wayne Rooney', wikiSlug: 'Wayne_Rooney', role: 'Top Skorer Man United & Inggris', badge: '👑 Classic' },
+        { id: 'cla_25', name: 'Paul Scholes', wikiSlug: 'Paul_Scholes', role: 'Gelandang Genius Man United & Inggris', badge: '👑 Classic' },
+        { id: 'cla_26', name: 'Ryan Giggs', wikiSlug: 'Ryan_Giggs', role: 'Winger Sebelas Juara Man United & Wales', badge: '👑 Classic' },
+        { id: 'cla_27', name: 'Rio Ferdinand', wikiSlug: 'Rio_Ferdinand', role: 'Tembok Kokoh Man United & Inggris', badge: '👑 Classic' },
+        { id: 'cla_28', name: 'John Terry', wikiSlug: 'John_Terry', role: 'Kapten Legenda Chelsea & Inggris', badge: '👑 Classic' },
+        { id: 'cla_29', name: 'Ashley Cole', wikiSlug: 'Ashley_Cole', role: 'Bek Kiri Terbaik Inggris & Chelsea/Arsenal', badge: '👑 Classic' },
+        { id: 'cla_30', name: 'Patrick Vieira', wikiSlug: 'Patrick_Vieira', role: 'Jenderal Lapangan Arsenal & Prancis', badge: '👑 Classic' },
+        { id: 'cla_31', name: 'Dennis Bergkamp', wikiSlug: 'Dennis_Bergkamp', role: 'The Non-Flying Dutchman Arsenal & Belanda', badge: '👑 Classic' },
+        { id: 'cla_32', name: 'Ruud van Nistelrooy', wikiSlug: 'Ruud_van_Nistelrooy', role: 'Predator Kotak Penalti Man United/Belanda', badge: '👑 Classic' },
+        { id: 'cla_33', name: 'Clarence Seedorf', wikiSlug: 'Clarence_Seedorf', role: 'Juara UCL 3 Klub Berbeda & Belanda', badge: '👑 Classic' },
+        { id: 'cla_34', name: 'Edgar Davids', wikiSlug: 'Edgar_Davids', role: 'Si Pitbull Juventus & Belanda', badge: '👑 Classic' },
+        { id: 'cla_35', name: 'Marco van Basten', wikiSlug: 'Marco_van_Basten', role: 'Striker Anggun AC Milan & Belanda', badge: '👑 Classic' },
+        { id: 'cla_36', name: 'Johan Cruyff', wikiSlug: 'Johan_Cruyff', role: 'Bapak Total Football Ajax & Barcelona', badge: '👑 Classic' },
+        { id: 'cla_37', name: 'Diego Maradona', wikiSlug: 'Diego_Maradona', role: 'Dewa Sepak Bola Argentina & Napoli', badge: '👑 Classic' },
+        { id: 'cla_38', name: 'Pele', wikiSlug: 'Pelé', role: 'O Rei 3x Juara Piala Dunia Brazil', badge: '👑 Classic' },
+        { id: 'cla_39', name: 'Franz Beckenbauer', wikiSlug: 'Franz_Beckenbauer', role: 'Der Kaiser Bayern Munich & Jerman', badge: '👑 Classic' },
+        { id: 'cla_40', name: 'Michel Platini', wikiSlug: 'Michel_Platini', role: 'Legenda Ballon d\'Or Juventus & Prancis', badge: '👑 Classic' },
+        { id: 'cla_41', name: 'Oliver Kahn', wikiSlug: 'Oliver_Kahn', role: 'Der Titan Bayern Munich & Jerman', badge: '👑 Classic' },
+        { id: 'cla_42', name: 'Michael Ballack', wikiSlug: 'Michael_Ballack', role: 'Kapten Bintang Jerman & Chelsea', badge: '👑 Classic' },
+        { id: 'cla_43', name: 'Miroslav Klose', wikiSlug: 'Miroslav_Klose', role: 'Top Skorer Sepanjang Masa Piala Dunia', badge: '👑 Classic' },
+        { id: 'cla_44', name: 'Philipp Lahm', wikiSlug: 'Philipp_Lahm', role: 'Kapten Juara Dunia Jerman & Bayern', badge: '👑 Classic' },
+        { id: 'cla_45', name: 'Bastian Schweinsteiger', wikiSlug: 'Bastian_Schweinsteiger', role: 'Jenderal Bayern Munich & Jerman', badge: '👑 Classic' },
+        { id: 'cla_46', name: 'Samuel Eto\'o', wikiSlug: 'Samuel_Eto\'o', role: 'Singa Kamerun & Barcelona/Inter Milan', badge: '👑 Classic' },
+        { id: 'cla_47', name: 'Yaya Toure', wikiSlug: 'Yaya_Touré', role: 'Gelandang Perkasa Man City & Pantai Gading', badge: '👑 Classic' },
+        { id: 'cla_48', name: 'George Weah', wikiSlug: 'George_Weah', role: 'Ballon d\'Or Pertama Afrika (Liberia/Milan)', badge: '👑 Classic' },
+        { id: 'cla_49', name: 'Eric Cantona', wikiSlug: 'Eric_Cantona', role: 'King Cantona Man United & Prancis', badge: '👑 Classic' },
+        { id: 'cla_50', name: 'Zlatan Ibrahimovic', wikiSlug: 'Zlatan_Ibrahimović', role: 'Singa Swedia & AC Milan/PSG/Barca', badge: '👑 Classic' }
+      ],
+
+      era_2010s: [
+        { id: 'gold_1', name: 'Lionel Messi', wikiSlug: 'Lionel_Messi', role: 'La Pulga 8 Ballon d\'Or Argentina & Barca', badge: '🔥 2010s' },
+        { id: 'gold_2', name: 'Cristiano Ronaldo', wikiSlug: 'Cristiano_Ronaldo', role: 'CR7 Mesin Gol Portugal & Real Madrid', badge: '🔥 2010s' },
+        { id: 'gold_3', name: 'Neymar', wikiSlug: 'Neymar', role: 'Bintang Magis Brazil & Barcelona/PSG', badge: '🔥 2010s' },
+        { id: 'gold_4', name: 'Luis Suarez', wikiSlug: 'Luis_Suárez', role: 'El Pistolero Uruguay & Barcelona/Liverpool', badge: '🔥 2010s' },
+        { id: 'gold_5', name: 'Gareth Bale', wikiSlug: 'Gareth_Bale', role: 'Winger Kilat Real Madrid & Wales', badge: '🔥 2010s' },
+        { id: 'gold_6', name: 'Karim Benzema', wikiSlug: 'Karim_Benzema', role: 'Ballon d\'Or 2022 Real Madrid & Prancis', badge: '🔥 2010s' },
+        { id: 'gold_7', name: 'Luka Modric', wikiSlug: 'Luka_Modrić', role: 'Ballon d\'Or Kroasia & Real Madrid', badge: '🔥 2010s' },
+        { id: 'gold_8', name: 'Toni Kroos', wikiSlug: 'Toni_Kroos', role: 'Sniper Pengatur Tempo Real Madrid & Jerman', badge: '🔥 2010s' },
+        { id: 'gold_9', name: 'Casemiro', wikiSlug: 'Casemiro', role: 'Gelandang Bertahan Real Madrid & Brazil', badge: '🔥 2010s' },
+        { id: 'gold_10', name: 'Sergio Ramos', wikiSlug: 'Sergio_Ramos', role: 'Bek Gol Menit 93 Real Madrid & Spanyol', badge: '🔥 2010s' },
+        { id: 'gold_11', name: 'Marcelo', wikiSlug: 'Marcelo_(footballer,_born_1988)', role: 'Bek Kiri Penuh Seni Brazil & Real Madrid', badge: '🔥 2010s' },
+        { id: 'gold_12', name: 'Pepe', wikiSlug: 'Pepe_(footballer,_born_1983)', role: 'Bek Garang Portugal & Real Madrid', badge: '🔥 2010s' },
+        { id: 'gold_13', name: 'Gerard Pique', wikiSlug: 'Gerard_Piqué', role: 'Palang Pintu Barcelona & Spanyol', badge: '🔥 2010s' },
+        { id: 'gold_14', name: 'Jordi Alba', wikiSlug: 'Jordi_Alba', role: 'Bek Kiri Cepat Barcelona & Spanyol', badge: '🔥 2010s' },
+        { id: 'gold_15', name: 'Sergio Busquets', wikiSlug: 'Sergio_Busquets', role: 'Poros Jangkar Barcelona & Spanyol', badge: '🔥 2010s' },
+        { id: 'gold_16', name: 'Xavi', wikiSlug: 'Xavi_(footballer,_born_1980)', role: 'Otak Tiki-Taka Barcelona & Spanyol', badge: '🔥 2010s' },
+        { id: 'gold_17', name: 'Andres Iniesta', wikiSlug: 'Andrés_Iniesta', role: 'Pencetak Gol Juara Dunia Spanyol 2010', badge: '🔥 2010s' },
+        { id: 'gold_18', name: 'Cesc Fabregas', wikiSlug: 'Cesc_Fàbregas', role: 'Gelandang Kreatif Spanyol & Chelsea/Arsenal', badge: '🔥 2010s' },
+        { id: 'gold_19', name: 'David Silva', wikiSlug: 'David_Silva', role: 'El Mago Man City & Spanyol', badge: '🔥 2010s' },
+        { id: 'gold_20', name: 'David Villa', wikiSlug: 'David_Villa', role: 'Top Skorer Spanyol & Barcelona', badge: '🔥 2010s' },
+        { id: 'gold_21', name: 'Fernando Torres', wikiSlug: 'Fernando_Torres', role: 'El Nino Liverpool/Chelsea & Spanyol', badge: '🔥 2010s' },
+        { id: 'gold_22', name: 'Sergio Aguero', wikiSlug: 'Sergio_Agüero', role: 'Gol Menit 93:20 Man City & Argentina', badge: '🔥 2010s' },
+        { id: 'gold_23', name: 'Angel Di Maria', wikiSlug: 'Ángel_Di_María', role: 'Pahlawan Final Argentina & Real Madrid/PSG', badge: '🔥 2010s' },
+        { id: 'gold_24', name: 'Gonzalo Higuain', wikiSlug: 'Gonzalo_Higuaín', role: 'Striker Tajam Napoli/Juventus & Argentina', badge: '🔥 2010s' },
+        { id: 'gold_25', name: 'Mesut Ozil', wikiSlug: 'Mesut_Özil', role: 'Raja Assist Real Madrid/Arsenal & Jerman', badge: '🔥 2010s' },
+        { id: 'gold_26', name: 'Alexis Sanchez', wikiSlug: 'Alexis_Sánchez', role: 'Bintang Lincah Arsenal & Chile', badge: '🔥 2010s' },
+        { id: 'gold_27', name: 'Eden Hazard', wikiSlug: 'Eden_Hazard', role: 'Penyihir Dribble Chelsea & Belgia', badge: '🔥 2010s' },
+        { id: 'gold_28', name: 'Kevin De Bruyne', wikiSlug: 'Kevin_De_Bruyne', role: 'Playmaker Terbaik Man City & Belgia', badge: '🔥 2010s' },
+        { id: 'gold_29', name: 'Thibaut Courtois', wikiSlug: 'Thibaut_Courtois', role: 'Kiper Raksasa Real Madrid & Belgia', badge: '🔥 2010s' },
+        { id: 'gold_30', name: 'Romelu Lukaku', wikiSlug: 'Romelu_Lukaku', role: 'Striker Monster Belgia & Inter', badge: '🔥 2010s' },
+        { id: 'gold_31', name: 'Vincent Kompany', wikiSlug: 'Vincent_Kompany', role: 'Kapten Karismatik Man City & Belgia', badge: '🔥 2010s' },
+        { id: 'gold_32', name: 'N\'Golo Kante', wikiSlug: 'N\'Golo_Kanté', role: 'Gelandang Paru-paru Chelsea & Prancis', badge: '🔥 2010s' },
+        { id: 'gold_33', name: 'Paul Pogba', wikiSlug: 'Paul_Pogba', role: 'Gelandang Juara Dunia Prancis & Juventus', badge: '🔥 2010s' },
+        { id: 'gold_34', name: 'Antoine Griezmann', wikiSlug: 'Antoine_Griezmann', role: 'Bintang Atletico Madrid & Prancis', badge: '🔥 2010s' },
+        { id: 'gold_35', name: 'Olivier Giroud', wikiSlug: 'Olivier_Giroud', role: 'Top Skorer Sejarah Timnas Prancis', badge: '🔥 2010s' },
+        { id: 'gold_36', name: 'Hugo Lloris', wikiSlug: 'Hugo_Lloris', role: 'Kapten Juara Dunia Prancis 2018', badge: '🔥 2010s' },
+        { id: 'gold_37', name: 'Raphael Varane', wikiSlug: 'Raphaël_Varane', role: 'Bek 4x Juara UCL Real Madrid & Prancis', badge: '🔥 2010s' },
+        { id: 'gold_38', name: 'Robert Lewandowski', wikiSlug: 'Robert_Lewandowski', role: 'Mesin Gol Bayern Munich & Polandia', badge: '🔥 2010s' },
+        { id: 'gold_39', name: 'Thomas Muller', wikiSlug: 'Thomas_Müller', role: 'Der Raumdeuter Bayern Munich & Jerman', badge: '🔥 2010s' },
+        { id: 'gold_40', name: 'Manuel Neuer', wikiSlug: 'Manuel_Neuer', role: 'Pionir Sweeper Keeper Bayern & Jerman', badge: '🔥 2010s' },
+        { id: 'gold_41', name: 'Marco Reus', wikiSlug: 'Marco_Reus', role: 'Ikon Loyalitas Borussia Dortmund & Jerman', badge: '🔥 2010s' },
+        { id: 'gold_42', name: 'Mats Hummels', wikiSlug: 'Mats_Hummels', role: 'Bek Elegan Dortmund/Bayern & Jerman', badge: '🔥 2010s' },
+        { id: 'gold_43', name: 'Arjen Robben', wikiSlug: 'Arjen_Robben', role: 'Cut Inside Man Bayern Munich & Belanda', badge: '🔥 2010s' },
+        { id: 'gold_44', name: 'Franck Ribery', wikiSlug: 'Franck_Ribéry', role: 'Winger Kilat Bayern Munich & Prancis', badge: '🔥 2010s' },
+        { id: 'gold_45', name: 'Sadio Mane', wikiSlug: 'Sadio_Mané', role: 'Pahlawan Liverpool & Senegal', badge: '🔥 2010s' },
+        { id: 'gold_46', name: 'Roberto Firmino', wikiSlug: 'Roberto_Firmino', role: 'False Nine Liverpool & Brazil', badge: '🔥 2010s' },
+        { id: 'gold_47', name: 'Mohamed Salah', wikiSlug: 'Mohamed_Salah', role: 'Raja Mesir Liverpool & Premier League', badge: '🔥 2010s' },
+        { id: 'gold_48', name: 'Virgil van Dijk', wikiSlug: 'Virgil_van_Dijk', role: 'Benteng Kokoh Liverpool & Belanda', badge: '🔥 2010s' },
+        { id: 'gold_49', name: 'Harry Kane', wikiSlug: 'Harry_Kane', role: 'Top Skorer Inggris & Tottenham/Bayern', badge: '🔥 2010s' },
+        { id: 'gold_50', name: 'Son Heung-min', wikiSlug: 'Son_Heung-min', role: 'Raja Asia Tottenham & Korea Selatan', badge: '🔥 2010s' }
+      ],
+
+      era_modern: [
+        { id: 'mod_1', name: 'Kylian Mbappe', wikiSlug: 'Kylian_Mbappé', role: 'Bintang Terang Real Madrid & Prancis', badge: '⚡ Modern' },
+        { id: 'mod_2', name: 'Erling Haaland', wikiSlug: 'Erling_Haaland', role: 'Cyborg Gol Man City & Norwegia', badge: '⚡ Modern' },
+        { id: 'mod_3', name: 'Jude Bellingham', wikiSlug: 'Jude_Bellingham', role: 'Sensasi Emas Real Madrid & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_4', name: 'Vinicius Junior', wikiSlug: 'Vinícius_Júnior', role: 'Winger Kilat Real Madrid & Brazil', badge: '⚡ Modern' },
+        { id: 'mod_5', name: 'Lamine Yamal', wikiSlug: 'Lamine_Yamal', role: 'Wonderkid Fenomenal Barcelona & Spanyol', badge: '⚡ Modern' },
+        { id: 'mod_6', name: 'Bukayo Saka', wikiSlug: 'Bukayo_Saka', role: 'Starboy Arsenal & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_7', name: 'Cole Palmer', wikiSlug: 'Cole_Palmer', role: 'Cold Palmer Chelsea & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_8', name: 'Phil Foden', wikiSlug: 'Phil_Foden', role: 'Pemain Terbaik EPL Man City & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_9', name: 'Rodri', wikiSlug: 'Rodri_(footballer,_born_1996)', role: 'Pemenang Ballon d\'Or 2024 Man City & Spanyol', badge: '⚡ Modern' },
+        { id: 'mod_10', name: 'Martin Odegaard', wikiSlug: 'Martin_Ødegaard', role: 'Kapten Kreatif Arsenal & Norwegia', badge: '⚡ Modern' },
+        { id: 'mod_11', name: 'Declan Rice', wikiSlug: 'Declan_Rice', role: 'Jenderal Lini Tengah Arsenal & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_12', name: 'William Saliba', wikiSlug: 'William_Saliba', role: 'Tembok Kokoh Arsenal & Prancis', badge: '⚡ Modern' },
+        { id: 'mod_13', name: 'Pedri', wikiSlug: 'Pedri', role: 'Gelandang Emas Barcelona & Spanyol', badge: '⚡ Modern' },
+        { id: 'mod_14', name: 'Gavi', wikiSlug: 'Gavi_(footballer)', role: 'Petarung Muda Barcelona & Spanyol', badge: '⚡ Modern' },
+        { id: 'mod_15', name: 'Dani Olmo', wikiSlug: 'Dani_Olmo', role: 'Bintang Euro 2024 Barcelona & Spanyol', badge: '⚡ Modern' },
+        { id: 'mod_16', name: 'Nico Williams', wikiSlug: 'Nico_Williams', role: 'Winger Kilat Athletic Bilbao & Spanyol', badge: '⚡ Modern' },
+        { id: 'mod_17', name: 'Robert Lewandowski', wikiSlug: 'Robert_Lewandowski', role: 'Striker Tajam Barcelona & Polandia', badge: '⚡ Modern' },
+        { id: 'mod_18', name: 'Raphinha', wikiSlug: 'Raphinha', role: 'Winger Bintang Barcelona & Brazil', badge: '⚡ Modern' },
+        { id: 'mod_19', name: 'Federico Valverde', wikiSlug: 'Federico_Valverde', role: 'El Halcon Real Madrid & Uruguay', badge: '⚡ Modern' },
+        { id: 'mod_20', name: 'Eduardo Camavinga', wikiSlug: 'Eduardo_Camavinga', role: 'Gelandang Serbabisa Real Madrid & Prancis', badge: '⚡ Modern' },
+        { id: 'mod_21', name: 'Aurelien Tchouameni', wikiSlug: 'Aurélien_Tchouaméni', role: 'Jangkar Kokoh Real Madrid & Prancis', badge: '⚡ Modern' },
+        { id: 'mod_22', name: 'Antonio Rudiger', wikiSlug: 'Antonio_Rüdiger', role: 'Bek Tangguh Real Madrid & Jerman', badge: '⚡ Modern' },
+        { id: 'mod_23', name: 'Jamal Musiala', wikiSlug: 'Jamal_Musiala', role: 'Bambi Dribble Bayern Munich & Jerman', badge: '⚡ Modern' },
+        { id: 'mod_24', name: 'Florian Wirtz', wikiSlug: 'Florian_Wirtz', role: 'Otak Juara Tak Terkalahkan Leverkusen & Jerman', badge: '⚡ Modern' },
+        { id: 'mod_25', name: 'Harry Kane', wikiSlug: 'Harry_Kane', role: 'Top Skorer Eropa Bayern Munich & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_26', name: 'Joshua Kimmich', wikiSlug: 'Joshua_Kimmich', role: 'Pemimpin Bayern Munich & Jerman', badge: '⚡ Modern' },
+        { id: 'mod_27', name: 'Alphonso Davies', wikiSlug: 'Alphonso_Davies', role: 'Roadrunner Bayern Munich & Kanada', badge: '⚡ Modern' },
+        { id: 'mod_28', name: 'Lautaro Martinez', wikiSlug: 'Lautaro_Martínez', role: 'El Toro Kapten Inter Milan & Argentina', badge: '⚡ Modern' },
+        { id: 'mod_29', name: 'Nicolo Barella', wikiSlug: 'Nicolò_Barella', role: 'Dinamo Lini Tengah Inter Milan & Italia', badge: '⚡ Modern' },
+        { id: 'mod_30', name: 'Marcus Thuram', wikiSlug: 'Marcus_Thuram', role: 'Striker Kuat Inter Milan & Prancis', badge: '⚡ Modern' },
+        { id: 'mod_31', name: 'Rafael Leao', wikiSlug: 'Rafael_Leão', role: 'Winger Cepat AC Milan & Portugal', badge: '⚡ Modern' },
+        { id: 'mod_32', name: 'Khvicha Kvaratskhelia', wikiSlug: 'Khvicha_Kvaratskhelia', role: 'Kvaradona Napoli & Georgia', badge: '⚡ Modern' },
+        { id: 'mod_33', name: 'Victor Osimhen', wikiSlug: 'Victor_Osimhen', role: 'Striker Bertopeng Galatasaray & Nigeria', badge: '⚡ Modern' },
+        { id: 'mod_34', name: 'Viktor Gyokeres', wikiSlug: 'Viktor_Gyökeres', role: 'Mesin Gol Mematikan Sporting & Swedia', badge: '⚡ Modern' },
+        { id: 'mod_35', name: 'Alexander Isak', wikiSlug: 'Alexander_Isak', role: 'Striker Elegan Newcastle & Swedia', badge: '⚡ Modern' },
+        { id: 'mod_36', name: 'Bruno Fernandes', wikiSlug: 'Bruno_Fernandes', role: 'Kapten Man United & Portugal', badge: '⚡ Modern' },
+        { id: 'mod_37', name: 'Alejandro Garnacho', wikiSlug: 'Alejandro_Garnacho', role: 'Winger Akrobatik Man United & Argentina', badge: '⚡ Modern' },
+        { id: 'mod_38', name: 'Kobbie Mainoo', wikiSlug: 'Kobbie_Mainoo', role: 'Bintang Tenang Man United & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_39', name: 'Lisandro Martinez', wikiSlug: 'Lisandro_Martínez', role: 'The Butcher Man United & Argentina', badge: '⚡ Modern' },
+        { id: 'mod_40', name: 'Alexis Mac Allister', wikiSlug: 'Alexis_Mac_Allister', role: 'Gelandang Juara Dunia Liverpool & Argentina', badge: '⚡ Modern' },
+        { id: 'mod_41', name: 'Trent Alexander-Arnold', wikiSlug: 'Trent_Alexander-Arnold', role: 'Bek Kanan Playmaker Liverpool & Inggris', badge: '⚡ Modern' },
+        { id: 'mod_42', name: 'Alisson Becker', wikiSlug: 'Alisson_Becker', role: 'Kiper Tangguh Liverpool & Brazil', badge: '⚡ Modern' },
+        { id: 'mod_43', name: 'Ederson', wikiSlug: 'Ederson_(footballer,_born_1993)', role: 'Kiper Distribusi Man City & Brazil', badge: '⚡ Modern' },
+        { id: 'mod_44', name: 'Ruben Dias', wikiSlug: 'Rúben_Dias', role: 'Pemimpin Pertahanan Man City & Portugal', badge: '⚡ Modern' },
+        { id: 'mod_45', name: 'Josko Gvardiol', wikiSlug: 'Joško_Gvardiol', role: 'Bek Bertopeng Man City & Kroasia', badge: '⚡ Modern' },
+        { id: 'mod_46', name: 'Bernardo Silva', wikiSlug: 'Bernardo_Silva', role: 'Gelandang Lincah Man City & Portugal', badge: '⚡ Modern' },
+        { id: 'mod_47', name: 'Julian Alvarez', wikiSlug: 'Julián_Álvarez', role: 'La Arana Atletico Madrid & Argentina', badge: '⚡ Modern' },
+        { id: 'mod_48', name: 'Emiliano Martinez', wikiSlug: 'Emiliano_Martínez', role: 'Dibu Kiper Terbaik Dunia Aston Villa & Argentina', badge: '⚡ Modern' },
+        { id: 'mod_49', name: 'Achraf Hakimi', wikiSlug: 'Achraf_Hakimi', role: 'Bek Kanan Cepat PSG & Maroko', badge: '⚡ Modern' },
+        { id: 'mod_50', name: 'Ousmane Dembele', wikiSlug: 'Ousmane_Dembélé', role: 'Winger Ambidekster PSG & Prancis', badge: '⚡ Modern' }
+      ],
+
+      timnas_indo: [
+        { id: 'ina_1', name: 'Jay Idzes', wikiSlug: 'Jay_Idzes', wikiLang: 'en', role: 'Bang Jayadi Kapten Timnas & Venezia', badge: '🇮🇩 Timnas' },
+        { id: 'ina_2', name: 'Thom Haye', wikiSlug: 'Thom_Haye', wikiLang: 'en', role: 'The Professor Gelandang Metronom Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_3', name: 'Maarten Paes', wikiSlug: 'Maarten_Paes', wikiLang: 'en', role: 'Tembok Garuda FC Dallas & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_4', name: 'Marselino Ferdinan', wikiSlug: 'Marselino_Ferdinan', wikiLang: 'en', role: 'Wonderkid Oxford United & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_5', name: 'Rizky Ridho', wikiSlug: 'Rizky_Ridho', wikiLang: 'en', role: 'Bek Lokal Kokoh Persija & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_6', name: 'Calvin Verdonk', wikiSlug: 'Calvin_Verdonk', wikiLang: 'en', role: 'Bek Kiri Tangguh NEC Nijmegen & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_7', name: 'Mees Hilgers', wikiSlug: 'Mees_Hilgers', wikiLang: 'en', role: 'El Nyengir Bek FC Twente & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_8', name: 'Kevin Diks', wikiSlug: 'Kevin_Diks', wikiLang: 'en', role: 'Bintang FC Copenhagen & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_9', name: 'Ragnar Oratmangoen', wikiSlug: 'Ragnar_Oratmangoen', wikiLang: 'en', role: 'Wak Haji Penyerang FCV Dender & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_10', name: 'Ivar Jenner', wikiSlug: 'Ivar_Jenner', wikiLang: 'en', role: 'Gelandang Jangkar FC Utrecht & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_11', name: 'Justin Hubner', wikiSlug: 'Justin_Hubner', wikiLang: 'en', role: 'Jusa Preman Garuda Wolves & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_12', name: 'Rafael Struick', wikiSlug: 'Rafael_Struick', wikiLang: 'en', role: 'El Klemer Brisbane Roar & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_13', name: 'Nathan Tjoe-A-On', wikiSlug: 'Nathan_Tjoe-A-On', wikiLang: 'en', role: 'Gelandang Idola Swansea & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_14', name: 'Sandy Walsh', wikiSlug: 'Sandy_Walsh', wikiLang: 'en', role: 'Pak Kumis KV Mechelen & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_15', name: 'Jordi Amat', wikiSlug: 'Jordi_Amat', wikiLang: 'en', role: 'Pangeran JDT & Timnas Indonesia', badge: '🇮🇩 Timnas' },
+        { id: 'ina_16', name: 'Shayne Pattynama', wikiSlug: 'Shayne_Pattynama', wikiLang: 'en', role: 'Bek Sayap KAS Eupen & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_17', name: 'Eliano Reijnders', wikiSlug: 'Eliano_Reijnders', wikiLang: 'en', role: 'Winger PEC Zwolle & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_18', name: 'Pratama Arhan', wikiSlug: 'Pratama_Arhan', wikiLang: 'en', role: 'Spesialis Lemparan Jauh Maut & Suwon FC', badge: '🇮🇩 Timnas' },
+        { id: 'ina_19', name: 'Asnawi Mangkualam', wikiSlug: 'Asnawi_Mangkualam', wikiLang: 'en', role: 'Kapten Petarung Port FC & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_20', name: 'Egy Maulana Vikri', wikiSlug: 'Egy_Maulana_Vikri', wikiLang: 'en', role: 'Egy Kelok Sembilan Dewa United & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_21', name: 'Witan Sulaeman', wikiSlug: 'Witan_Sulaeman', wikiLang: 'en', role: 'Baby Shark Persija & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_22', name: 'Ramadhan Sananta', wikiSlug: 'Ramadhan_Sananta', wikiLang: 'en', role: 'Striker Lokal Tajam Persis Solo & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_23', name: 'Ernando Ari', wikiSlug: 'Ernando_Ari', wikiLang: 'en', role: 'Kiper Heroik Persebaya & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_24', name: 'Nadeo Argawinata', wikiSlug: 'Nadeo_Argawinata', wikiLang: 'en', role: 'Kiper Borneo FC & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_25', name: 'Marc Klok', wikiSlug: 'Marc_Klok', wikiLang: 'en', role: 'Jenderal Maung Bandung Persib & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_26', name: 'Stefano Lilipaly', wikiSlug: 'Stefano_Lilipaly', wikiLang: 'en', role: 'Playmaker Borneo FC & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_27', name: 'Bambang Pamungkas', wikiSlug: 'Bambang_Pamungkas', wikiLang: 'id', role: 'Legenda Nomor 20 Persija & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_28', name: 'Boaz Solossa', wikiSlug: 'Boaz_Solossa', wikiLang: 'id', role: 'Mutiara Hitam Persipura & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_29', name: 'Cristian Gonzales', wikiSlug: 'Cristian_Gonzáles', wikiLang: 'id', role: 'El Loco Predator Gol Indonesia', badge: '🇮🇩 Timnas' },
+        { id: 'ina_30', name: 'Firman Utina', wikiSlug: 'Firman_Utina', wikiLang: 'id', role: 'Kapten Jenderal Lapangan Tengah Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_31', name: 'Ponaryo Astaman', wikiSlug: 'Ponaryo_Astaman', wikiLang: 'id', role: 'Gelandang Elegan & Gol Roket Piala Asia', badge: '🇮🇩 Timnas' },
+        { id: 'ina_32', name: 'Ismed Sofyan', wikiSlug: 'Ismed_Sofyan', wikiLang: 'id', role: 'Pak Haji Bek Kanan Legendaris Persija', badge: '🇮🇩 Timnas' },
+        { id: 'ina_33', name: 'Atep Rizal', wikiSlug: 'Atep_Rizal', wikiLang: 'id', role: 'Lord Atep Pangeran Biru Persib & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_34', name: 'Budi Sudarsono', wikiSlug: 'Budi_Sudarsono', wikiLang: 'id', role: 'Si Ular Piton Timnas Indonesia', badge: '🇮🇩 Timnas' },
+        { id: 'ina_35', name: 'Kurniawan Dwi Yulianto', wikiSlug: 'Kurniawan_Dwi_Yulianto', wikiLang: 'id', role: 'Si Kurus Primavera & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_36', name: 'Bima Sakti', wikiSlug: 'Bima_Sakti', wikiLang: 'id', role: 'Tendangan Gelegar & Pelatih Garuda Muda', badge: '🇮🇩 Timnas' },
+        { id: 'ina_37', name: 'Hendro Kartiko', wikiSlug: 'Hendro_Kartiko', wikiLang: 'id', role: 'Fabien Barthez Indonesia Kiper Legenda', badge: '🇮🇩 Timnas' },
+        { id: 'ina_38', name: 'Markus Horison', wikiSlug: 'Markus_Horison', wikiLang: 'id', role: 'Kiper Tangguh Finalis Piala AFF 2010', badge: '🇮🇩 Timnas' },
+        { id: 'ina_39', name: 'Irfan Bachdim', wikiSlug: 'Irfan_Bachdim', wikiLang: 'id', role: 'Bintang Fenomenal Piala AFF 2010', badge: '🇮🇩 Timnas' },
+        { id: 'ina_40', name: 'Evan Dimas', wikiSlug: 'Evan_Dimas', wikiLang: 'id', role: 'Kapten Juara Piala AFF U-19 2013', badge: '🇮🇩 Timnas' },
+        { id: 'ina_41', name: 'Andik Vermansah', wikiSlug: 'Andik_Vermansah', wikiLang: 'id', role: 'Messi Indonesia Winger Cepat Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_42', name: 'Boas Atururi', wikiSlug: 'Boas_Atururi', wikiLang: 'id', role: 'Pemain Sayap Gesit Papua & Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_43', name: 'Shin Tae-yong', wikiSlug: 'Shin_Tae-yong', wikiLang: 'en', role: 'Arsitek Kebangkitan Timnas Indonesia', badge: '🇮🇩 Timnas' },
+        { id: 'ina_44', name: 'Patrick Kluivert', wikiSlug: 'Patrick_Kluivert', wikiLang: 'en', role: 'Legenda Barcelona/Belanda & Tokoh Sepak Bola', badge: '🇮🇩 Timnas' },
+        { id: 'ina_45', name: 'Erick Thohir', wikiSlug: 'Erick_Thohir', wikiLang: 'id', role: 'Ketua Umum PSSI Transformasi Garuda', badge: '🇮🇩 Timnas' },
+        { id: 'ina_46', name: 'Hamka Hamzah', wikiSlug: 'Hamka_Hamzah', wikiLang: 'id', role: 'Kapten Karismatik & Bek Tangguh Timnas', badge: '🇮🇩 Timnas' },
+        { id: 'ina_47', name: 'Maman Abdurrahman', wikiSlug: 'Maman_Abdurrahman', wikiLang: 'id', role: 'Bek Senior Legenda Indonesia & Persija', badge: '🇮🇩 Timnas' },
+        { id: 'ina_48', name: 'Beto Goncalves', wikiSlug: 'Beto_Gonçalves', wikiLang: 'id', role: 'Striker Naturalisasi Haus Gol Indonesia', badge: '🇮🇩 Timnas' }
+      ]
+    },
+
+    /**
+     * Resolves single player photo using dual-source fallback (Wikipedia REST API -> TheSportsDB -> Avatar)
+     */
+    async resolveFootballImage(player) {
+      const cacheKey = `gw_fb_img_${player.wikiSlug}`;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached && (cached.startsWith('http') || cached.startsWith('data:'))) {
+            return cached;
+          }
+        }
+      } catch (e) {}
+
+      // 1. Wikipedia REST API
+      const lang = player.wikiLang || 'en';
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(player.wikiSlug)}`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.thumbnail && data.thumbnail.source) {
+            try {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(cacheKey, data.thumbnail.source);
+              }
+            } catch (e) {}
+            return data.thumbnail.source;
+          }
+        }
+      } catch (e) {}
+
+      // 2. TheSportsDB API Fallback
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        const res = await fetch(`https://www.thesportsdb.com/api/v1/json/123/searchplayers.php?p=${encodeURIComponent(player.name)}`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          const img = data && data.player && data.player[0] && (data.player[0].strCutout || data.player[0].strThumb);
+          if (img) {
+            try {
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(cacheKey, img);
+              }
+            } catch (e) {}
+            return img;
+          }
+        }
+      } catch (e) {}
+
+      // 3. Fallback Avatar
+      const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=0284c7&color=fff&size=200`;
+      return fallback;
+    },
+
+    /**
+     * Resolves full football characters deck based on chosen sub-era
+     */
+    async getFootballCharacters(subTheme = 'all_eras', targetCount = 24) {
+      let pool = [];
+      if (subTheme === 'all_eras') {
+        pool = [
+          ...this.FOOTBALL_PLAYERS.era_classic,
+          ...this.FOOTBALL_PLAYERS.era_2010s,
+          ...this.FOOTBALL_PLAYERS.era_modern,
+          ...this.FOOTBALL_PLAYERS.timnas_indo
+        ];
+      } else if (this.FOOTBALL_PLAYERS[subTheme]) {
+        pool = [...this.FOOTBALL_PLAYERS[subTheme]];
+      } else {
+        pool = [...this.FOOTBALL_PLAYERS.era_modern];
+      }
+
+      // Shuffle pool
+      const shuffled = [...pool].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, targetCount);
+
+      // Batch resolve images in chunks of 8
+      const BATCH_SIZE = 8;
+      const resolvedCards = [];
+      for (let i = 0; i < selected.length; i += BATCH_SIZE) {
+        const batch = selected.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (p, idx) => {
+            const img = await this.resolveFootballImage(p);
+            return {
+              id: `fb_${p.id || p.wikiSlug}_${i + idx}`,
+              name: p.name,
+              role: p.role || 'Pemain Sepak Bola',
+              badge: p.badge,
+              image: img
+            };
+          })
+        );
+        resolvedCards.push(...batchResults);
+      }
+
+      return resolvedCards;
+    },
+
     // Jikan Anime MAL IDs
     ANIME_MAP: {
       'naruto': 20,
@@ -1925,11 +2248,24 @@ const GuessWhoGame = (function () {
     },
 
     /**
-     * Fetches characters dynamically from Jikan API v4 or Wikipedia REST API,
+     * Fetches characters dynamically from Football Dual-Source API, Jikan API v4, or Wikipedia REST API,
      * with automatic and instant fallback to curated decks on network timeout/limits.
      */
-    async getCharacters({ category = 'anime', subTheme = 'all-popular', targetCount = 24 } = {}) {
+    async getCharacters({ category = 'football', subTheme = 'all_eras', targetCount = 24 } = {}) {
       UI.Logger('GUESS-WHO', `Fetching characters for [${category} / ${subTheme}], count: ${targetCount}`);
+
+      // 0. Try Football Category (Dual-Source: Wikipedia + TheSportsDB)
+      if (category === 'football') {
+        try {
+          const cards = await this.getFootballCharacters(subTheme, targetCount);
+          if (cards && cards.length >= targetCount) {
+            UI.Logger('GUESS-WHO', `Successfully fetched ${cards.length} football players`);
+            return cards.slice(0, targetCount);
+          }
+        } catch (fbErr) {
+          UI.Logger('GUESS-WHO', 'Error fetching football cards:', fbErr, true);
+        }
+      }
 
       // 1. Try Jikan API if specific anime subtheme
       if (category === 'anime' && this.ANIME_MAP[subTheme]) {
@@ -2026,6 +2362,17 @@ const GuessWhoGame = (function () {
   let showSecretCardModal = false;
 
   const THEME_OPTIONS = [
+    {
+      category: 'football',
+      categoryLabel: '⚽ Pemain Bola (Football Stars)',
+      subThemes: [
+        { key: 'all_eras', label: '🌟 Gabungan Semua Era (All-Time Mix)' },
+        { key: 'era_classic', label: '👑 Era Legenda & Klasik (90-an – 2000-an)' },
+        { key: 'era_2010s', label: '🔥 Era Emas 2010-an (Era Prime Messi-CR7)' },
+        { key: 'era_modern', label: '⚡ Era Modern & Bintang Saat Ini (2020-an – Sekarang)' },
+        { key: 'timnas_indo', label: '🇮🇩 Spesial: Timnas Indonesia & Legenda Lokal' }
+      ]
+    },
     {
       category: 'anime',
       categoryLabel: 'Anime Populer (Jikan API)',
@@ -2124,8 +2471,8 @@ const GuessWhoGame = (function () {
       // Default count: 2 players = 24, 3+ players = 48
       const defaultCardCount = totalPlayers <= 2 ? 24 : 48;
       const currentCount = gameState.cardCount || defaultCardCount;
-      const currentCategory = gameState.themeKey || 'anime';
-      const currentSubTheme = gameState.subThemeKey || 'all-popular';
+      const currentCategory = gameState.themeKey || 'football';
+      const currentSubTheme = gameState.subThemeKey || (currentCategory === 'football' ? 'all_eras' : (currentCategory === 'anime' ? 'all-popular' : 'tokoh-dunia'));
 
       const headerHTML = `
         <div class="flex items-center justify-between mb-6">
@@ -2165,7 +2512,7 @@ const GuessWhoGame = (function () {
             <div class="mt-6 p-4 rounded-2xl bg-white border-2 border-sky-500/15 shadow-sm inline-flex items-center gap-3">
               <span class="w-3 h-3 rounded-full bg-sky-500 animate-ping"></span>
               <span class="text-xs font-display font-bold text-sky-900">
-                Tema: ${currentCategory.toUpperCase()} • ${currentCount} Wajah
+                Tema: ${currentCategory === 'football' ? '⚽ PEMAIN BOLA' : currentCategory.toUpperCase()} • ${currentCount} Wajah
               </span>
             </div>
           </div>
@@ -2288,11 +2635,13 @@ const GuessWhoGame = (function () {
         const gameState = getGameState(currentRoom);
         const playerList = Object.values(currentRoom.players || {});
         const count = gameState.cardCount || (playerList.length <= 2 ? 24 : 48);
+        const category = gameState.themeKey || 'football';
+        const subTheme = gameState.subThemeKey || (category === 'football' ? 'all_eras' : (category === 'anime' ? 'all-popular' : 'tokoh-dunia'));
 
         // Fetch characters using CharacterService
         const boardCards = await CharacterService.getCharacters({
-          category: gameState.themeKey || 'anime',
-          subTheme: gameState.subThemeKey || 'all-popular',
+          category,
+          subTheme,
           targetCount: count
         });
 
@@ -2430,12 +2779,17 @@ const GuessWhoGame = (function () {
       const secretCardPopoverHTML = showSecretCardModal && mySecretCard ? `
         <div class="mb-4 p-4 rounded-3xl bg-gradient-to-r from-sky-500/20 via-indigo-500/20 to-sky-500/20 border-2 border-sky-400/40 shadow-sm flex items-center justify-between gap-4 animate-float">
           <div class="flex items-center gap-3.5">
-            <div class="w-14 h-18 rounded-2xl overflow-hidden border-2 border-white shadow-md shrink-0 aspect-[3/4]">
+            <div class="w-14 h-18 rounded-2xl overflow-hidden border-2 border-white shadow-md shrink-0 aspect-[3/4] relative">
               <img src="${mySecretCard.image}" alt="${mySecretCard.name}" referrerpolicy="no-referrer" class="w-full h-full object-cover">
+              ${mySecretCard.badge ? `
+                <div class="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-slate-950/85 text-white text-[8px] font-display font-black border border-white/20">
+                  ${mySecretCard.badge}
+                </div>
+              ` : ''}
             </div>
             <div>
               <span class="text-[10px] font-display font-bold uppercase tracking-wider text-sky-800 bg-white/70 px-2 py-0.5 rounded-full border border-sky-200">
-                Karakter Rahasiamu (Jaga Kerahasiaannya!)
+                ${mySecretCard.badge ? `${mySecretCard.badge} • ` : ''}Karakter Rahasiamu (Jaga Kerahasiaannya!)
               </span>
               <h3 class="font-display font-black text-lg sm:text-xl text-slate-900 mt-0.5">
                 ${mySecretCard.name}
@@ -2586,6 +2940,13 @@ const GuessWhoGame = (function () {
             onclick="GuessWhoGame.toggleEliminate('${card.id}')"
             class="relative rounded-2xl overflow-hidden border-2 transition-all duration-200 select-none cursor-pointer bg-white group aspect-[3/4] ${cardClasses}"
           >
+            <!-- Badge Era / Kategori (jika ada) -->
+            ${card.badge ? `
+              <div class="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-xs text-white text-[9px] font-display font-black shadow-xs border border-white/20 pointer-events-none">
+                ${card.badge}
+              </div>
+            ` : ''}
+
             <!-- Gambar Karakter -->
             <img 
               src="${card.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(card.name)}&background=0284c7&color=fff&size=200`}" 
@@ -2760,7 +3121,7 @@ const GuessWhoGame = (function () {
       `).join('');
 
       const characterOptionsHTML = board.map(c => `
-        <option value="${c.id}">${c.name}</option>
+        <option value="${c.id}">${c.name}${c.badge ? ' (' + c.badge + ')' : ''}</option>
       `).join('');
 
       const modalContent = `
