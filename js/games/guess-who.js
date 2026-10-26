@@ -2054,7 +2054,11 @@ const GuessWhoGame = (function () {
 
   function getGameState(roomData) {
     if (!roomData) return {};
-    return roomData.guessWhoGame || roomData.gameState?.guessWho || {};
+    const state = roomData.guessWhoGame || roomData.gameState?.guessWho || {};
+    if (!state.playerSecrets || typeof state.playerSecrets !== 'object') state.playerSecrets = {};
+    if (!state.playerStats || typeof state.playerStats !== 'object') state.playerStats = {};
+    if (!Array.isArray(state.boardCharacters)) state.boardCharacters = [];
+    return state;
   }
 
   function getEliminatedNotes(roomCode, myId, targetId) {
@@ -2269,51 +2273,60 @@ const GuessWhoGame = (function () {
         btn.innerHTML = `<span class="animate-spin mr-2">⏳</span> Memuat Kartu Karakter...`;
       }
 
-      UI.Sound.pop();
-      UI.Logger('GUESS-WHO', 'Starting game, fetching characters...');
+      try {
+        UI.Sound.pop();
+        UI.Logger('GUESS-WHO', 'Starting game, fetching characters...');
 
-      const gameState = getGameState(currentRoom);
-      const playerList = Object.values(currentRoom.players || {});
-      const count = gameState.cardCount || (playerList.length <= 2 ? 24 : 48);
+        const gameState = getGameState(currentRoom);
+        const playerList = Object.values(currentRoom.players || {});
+        const count = gameState.cardCount || (playerList.length <= 2 ? 24 : 48);
 
-      // Fetch characters using CharacterService
-      const boardCards = await CharacterService.getCharacters({
-        category: gameState.themeKey || 'anime',
-        subTheme: gameState.subThemeKey || 'all-popular',
-        targetCount: count
-      });
+        // Fetch characters using CharacterService
+        const boardCards = await CharacterService.getCharacters({
+          category: gameState.themeKey || 'anime',
+          subTheme: gameState.subThemeKey || 'all-popular',
+          targetCount: count
+        });
 
-      // Randomly assign 1 secret character per player (without duplicates if possible)
-      const shuffledCards = [...boardCards].sort(() => 0.5 - Math.random());
-      const playerSecrets = {};
-      const playerStats = {};
+        // Randomly assign 1 secret character per player (without duplicates if possible)
+        const shuffledCards = [...boardCards].sort(() => 0.5 - Math.random());
+        const playerSecrets = {};
+        const playerStats = {};
 
-      playerList.forEach((p, index) => {
-        const assignedCard = shuffledCards[index % shuffledCards.length];
-        playerSecrets[p.id] = assignedCard.id;
-        playerStats[p.id] = {
-          isAlive: true,
-          points: 0,
-          eliminatedBy: null
-        };
-      });
+        playerList.forEach((p, index) => {
+          const assignedCard = shuffledCards[index % shuffledCards.length];
+          playerSecrets[p.id] = assignedCard.id;
+          playerStats[p.id] = {
+            isAlive: true,
+            points: 0,
+            eliminatedBy: null
+          };
+        });
 
-      await DB.updateGameState(currentRoom.code, 'guessWho', {
-        boardCharacters: boardCards,
-        playerSecrets,
-        playerStats,
-        status: 'playing',
-        winnerId: null,
-        round: (gameState.round || 1),
-        lastEvent: {
-          type: 'START',
-          timestamp: Date.now()
+        await DB.updateGameState(currentRoom.code, 'guessWho', {
+          boardCharacters: boardCards,
+          playerSecrets,
+          playerStats,
+          status: 'playing',
+          winnerId: null,
+          round: (gameState.round || 1),
+          lastEvent: {
+            type: 'START',
+            timestamp: Date.now()
+          }
+        });
+
+        UI.Sound.fanfare();
+        UI.Confetti();
+        UI.Toast('Pertandingan Dimulai! Cek Karakter Rahasiamu.', 'success', 4000);
+      } catch (err) {
+        UI.Logger('GUESS-WHO', 'Error starting game:', err, true);
+        UI.Toast('Gagal memulai Guess Who: ' + (err.message || err), 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Mulai Pertandingan Battle Royale! 🚀</span>`;
         }
-      });
-
-      UI.Sound.fanfare();
-      UI.Confetti();
-      UI.Toast('Pertandingan Dimulai! Cek Karakter Rahasiamu.', 'success', 4000);
+      }
     },
 
     /**
@@ -2806,65 +2819,74 @@ const GuessWhoGame = (function () {
 
       UI.closeModal();
 
-      const gameState = getGameState(currentRoom);
-      const stats = { ...(gameState.playerStats || {}) };
+      try {
+        const gameState = getGameState(currentRoom);
+        const stats = { ...(gameState.playerStats || {}) };
 
-      // Player must be alive
-      if (!stats[currentPlayer.id]?.isAlive) {
-        UI.Toast('Pemain yang sudah gugur tidak dapat menebak!', 'warning');
-        return;
-      }
+        // Player must be alive
+        if (!stats[currentPlayer.id]?.isAlive) {
+          UI.Toast('Pemain yang sudah gugur tidak dapat menebak!', 'warning');
+          return;
+        }
 
-      const playerList = Object.values(currentRoom.players || {});
-      if (!stats[currentPlayer.id]) stats[currentPlayer.id] = { isAlive: true, points: 0 };
-      if (!stats[targetPlayerId]) stats[targetPlayerId] = { isAlive: true, points: 0 };
+        const playerList = Object.values(currentRoom.players || {});
+        if (!stats[currentPlayer.id]) stats[currentPlayer.id] = { isAlive: true, points: 0 };
+        if (!stats[targetPlayerId]) stats[targetPlayerId] = { isAlive: true, points: 0 };
 
-      const isCorrect = (realSecretId === guessedCharId);
+        const targetPlayer = currentRoom.players ? currentRoom.players[targetPlayerId] : null;
+        const realSecretId = gameState.playerSecrets ? gameState.playerSecrets[targetPlayerId] : null;
+        const guessedCard = (gameState.boardCharacters || []).find(c => c.id === guessedCharId);
 
-      UI.Logger('GUESS-WHO', `Guess submitted by ${currentPlayer.name} against ${targetPlayer?.name}: guess=${guessedCharId}, real=${realSecretId}, correct=${isCorrect}`);
+        const isCorrect = (realSecretId === guessedCharId);
 
-      if (isCorrect) {
-        // TEPAT SASARAN (+10 Poin & Target Gugur Permanen)
-        stats[currentPlayer.id].points = (stats[currentPlayer.id].points || 0) + 10;
-        stats[targetPlayerId].isAlive = false;
-        stats[targetPlayerId].eliminatedBy = currentPlayer.name;
+        UI.Logger('GUESS-WHO', `Guess submitted by ${currentPlayer.name} against ${targetPlayer?.name}: guess=${guessedCharId}, real=${realSecretId}, correct=${isCorrect}`);
 
-        UI.Sound.fanfare();
-        UI.Confetti();
-        UI.Toast(`🎯 TEPAT SASARAN! Kamu berhasil menebak ${targetPlayer?.name} (${guessedCard?.name})! (+10 Poin)`, 'success', 5000);
+        if (isCorrect) {
+          // TEPAT SASARAN (+10 Poin & Target Gugur Permanen)
+          stats[currentPlayer.id].points = (stats[currentPlayer.id].points || 0) + 10;
+          stats[targetPlayerId].isAlive = false;
+          stats[targetPlayerId].eliminatedBy = currentPlayer.name;
 
-        // Check if Last Man Standing remains
-        const aliveRemaining = playerList.filter(p => stats[p.id]?.isAlive);
-        const isGameOver = aliveRemaining.length <= 1;
-        const winner = isGameOver ? (aliveRemaining[0] || currentPlayer) : null;
+          UI.Sound.fanfare();
+          UI.Confetti();
+          UI.Toast(`🎯 TEPAT SASARAN! Kamu berhasil menebak ${targetPlayer?.name} (${guessedCard?.name})! (+10 Poin)`, 'success', 5000);
 
-        await DB.updateGameState(currentRoom.code, 'guessWho', {
-          playerStats: stats,
-          status: isGameOver ? 'gameover' : 'playing',
-          winnerId: winner ? winner.id : null,
-          lastEvent: {
-            type: 'CORRECT',
-            guesserName: currentPlayer.name,
-            targetName: targetPlayer?.name || 'Lawan',
-            characterName: guessedCard?.name || 'Karakter',
-            timestamp: Date.now()
-          }
-        });
-      } else {
-        // SALAH TEBAK (-5 Poin, rahasia target tetap aman)
-        stats[currentPlayer.id].points = (stats[currentPlayer.id].points || 0) - 5;
+          // Check if Last Man Standing remains
+          const aliveRemaining = playerList.filter(p => stats[p.id]?.isAlive);
+          const isGameOver = aliveRemaining.length <= 1;
+          const winner = isGameOver ? (aliveRemaining[0] || currentPlayer) : null;
 
-        UI.Toast(`❌ SALAH TEBAK! ${targetPlayer?.name} BUKAN ${guessedCard?.name}! (-5 Poin)`, 'error', 4500);
+          await DB.updateGameState(currentRoom.code, 'guessWho', {
+            playerStats: stats,
+            status: isGameOver ? 'gameover' : 'playing',
+            winnerId: winner ? winner.id : null,
+            lastEvent: {
+              type: 'CORRECT',
+              guesserName: currentPlayer.name,
+              targetName: targetPlayer?.name || 'Lawan',
+              characterName: guessedCard?.name || 'Karakter',
+              timestamp: Date.now()
+            }
+          });
+        } else {
+          // SALAH TEBAK (-5 Poin, rahasia target tetap aman)
+          stats[currentPlayer.id].points = (stats[currentPlayer.id].points || 0) - 5;
 
-        await DB.updateGameState(currentRoom.code, 'guessWho', {
-          playerStats: stats,
-          lastEvent: {
-            type: 'WRONG',
-            guesserName: currentPlayer.name,
-            targetName: targetPlayer?.name || 'Lawan',
-            timestamp: Date.now()
-          }
-        });
+          UI.Toast(`❌ SALAH TEBAK! ${targetPlayer?.name} BUKAN ${guessedCard?.name}! (-5 Poin)`, 'error', 4500);
+
+          await DB.updateGameState(currentRoom.code, 'guessWho', {
+            playerStats: stats,
+            lastEvent: {
+              type: 'WRONG',
+              guesserName: currentPlayer.name,
+              targetName: targetPlayer?.name || 'Lawan',
+              timestamp: Date.now()
+            }
+          });
+        }
+      } catch (err) {
+        UI.Logger('GUESS-WHO', 'Error submitting guess:', err, true);
+        UI.Toast('Gagal memproses tebakan: ' + (err.message || err), 'error');
       }
     },
 

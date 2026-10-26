@@ -124,11 +124,17 @@ const CostumeDetectiveGame = (function () {
   };
 
   /**
-   * Helper: Get current game state
+   * Helper: Get current game state with defensive normalization
    */
   function getGameState(roomData) {
     if (!roomData) return {};
-    return roomData.costumeDetectiveGame || roomData.gameState?.costumeDetective || {};
+    const state = roomData.costumeDetectiveGame || roomData.gameState?.costumeDetective || {};
+    if (!Array.isArray(state.actionLogs)) state.actionLogs = [];
+    if (!Array.isArray(state.turnOrder)) state.turnOrder = [];
+    if (!state.boardCharacters || typeof state.boardCharacters !== 'object') state.boardCharacters = {};
+    if (!state.playerSecrets || typeof state.playerSecrets !== 'object') state.playerSecrets = {};
+    if (!state.diceState || typeof state.diceState !== 'object') state.diceState = {};
+    return state;
   }
 
   /**
@@ -671,61 +677,69 @@ const CostumeDetectiveGame = (function () {
    * 1. Start Costume Party Game (Host Only)
    */
   async function startGame() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
 
-    const playerList = Object.values(currentRoom.players || {});
-    if (playerList.length < 2) {
-      UI.Toast('Minimal 2 pemain untuk memulai Costume Party Detective!', 'warning');
-      return;
+      const playerList = Object.values(currentRoom.players || {});
+      if (playerList.length < 2) {
+        UI.Toast('Minimal 2 pemain untuk memulai Costume Party Detective!', 'warning');
+        return;
+      }
+
+      // Shuffle characters and distribute to 6 rooms evenly
+      const roomKeys = ['red', 'blue', 'yellow', 'green', 'purple', 'orange'];
+      const shuffledChars = [...CHARACTERS_LIST].sort(() => 0.5 - Math.random());
+
+      const boardCharacters = {};
+      shuffledChars.forEach((c, idx) => {
+        const roomIndex = idx % 6;
+        boardCharacters[c.id] = {
+          id: c.id,
+          name: c.name,
+          emoji: c.emoji,
+          badgeClass: c.badgeClass,
+          roomId: roomKeys[roomIndex],
+          isAlive: true
+        };
+      });
+
+      // Deal 1 secret character to each player from the 20
+      const playerSecrets = {};
+      playerList.forEach((p, idx) => {
+        playerSecrets[p.id] = shuffledChars[idx].id;
+      });
+
+      const turnOrder = playerList.map(p => p.id).sort(() => 0.5 - Math.random());
+
+      await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+        status: 'playing',
+        turnOrder: turnOrder,
+        turnIndex: 0,
+        currentTurnPlayerId: turnOrder[0],
+        playerSecrets: playerSecrets,
+        boardCharacters: boardCharacters,
+        diceState: {
+          hasRolled: false,
+          rollType: null,
+          targetRoomId: null,
+          label: '',
+          description: ''
+        },
+        actionLogs: [
+          { text: `Pesta topeng dimulai! 20 karakter berkostum telah disebar ke 6 ruangan.`, timestamp: Date.now() }
+        ],
+        winnerPlayerId: null
+      });
+
+      UI.Toast('Pesta dimulai! 1 karakter rahasia telah dibagikan ke masing-masing pemain.', 'success');
+    } catch (err) {
+      UI.Logger('COSTUME-DETECTIVE', 'Error starting game:', err, true);
+      UI.Toast('Gagal memulai Costume Party Detective: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    // Shuffle characters and distribute to 6 rooms evenly
-    const roomKeys = ['red', 'blue', 'yellow', 'green', 'purple', 'orange'];
-    const shuffledChars = [...CHARACTERS_LIST].sort(() => 0.5 - Math.random());
-
-    const boardCharacters = {};
-    shuffledChars.forEach((c, idx) => {
-      const roomIndex = idx % 6;
-      boardCharacters[c.id] = {
-        id: c.id,
-        name: c.name,
-        emoji: c.emoji,
-        badgeClass: c.badgeClass,
-        roomId: roomKeys[roomIndex],
-        isAlive: true
-      };
-    });
-
-    // Deal 1 secret character to each player from the 20
-    const playerSecrets = {};
-    playerList.forEach((p, idx) => {
-      playerSecrets[p.id] = shuffledChars[idx].id;
-    });
-
-    const turnOrder = playerList.map(p => p.id).sort(() => 0.5 - Math.random());
-
-    await DB.updateGameState(currentRoom.code, 'costumeDetective', {
-      status: 'playing',
-      turnOrder: turnOrder,
-      turnIndex: 0,
-      currentTurnPlayerId: turnOrder[0],
-      playerSecrets: playerSecrets,
-      boardCharacters: boardCharacters,
-      diceState: {
-        hasRolled: false,
-        rollType: null,
-        targetRoomId: null,
-        label: '',
-        description: ''
-      },
-      actionLogs: [
-        { text: `Pesta topeng dimulai! 20 karakter berkostum telah disebar ke 6 ruangan.`, timestamp: Date.now() }
-      ],
-      winnerPlayerId: null
-    });
-
-    UI.Toast('Pesta dimulai! 1 karakter rahasia telah dibagikan ke masing-masing pemain.', 'success');
   }
 
   /**
@@ -738,69 +752,75 @@ const CostumeDetectiveGame = (function () {
     if (state.diceState?.hasRolled) return;
 
     isRolling = true;
-    UI.Sound.pop();
+    try {
+      UI.Sound.pop();
 
-    // 6 Possible Dice Outcomes:
-    // 1: Free Move
-    // 2-5: Pull to Specific Room Color (Red, Blue, Yellow, or random from Green/Purple/Orange)
-    // 6: Eliminate (Interrogate)
-    const rollNumber = Math.floor(Math.random() * 6) + 1;
-    let rollType = 'move_free';
-    let targetRoomId = null;
-    let label = '';
-    let description = '';
+      // 6 Possible Dice Outcomes:
+      // 1: Free Move
+      // 2-5: Pull to Specific Room Color (Red, Blue, Yellow, or random from Green/Purple/Orange)
+      // 6: Eliminate (Interrogate)
+      const rollNumber = Math.floor(Math.random() * 6) + 1;
+      let rollType = 'move_free';
+      let targetRoomId = null;
+      let label = '';
+      let description = '';
 
-    const roomKeys = ['red', 'blue', 'yellow', 'green', 'purple', 'orange'];
+      const roomKeys = ['red', 'blue', 'yellow', 'green', 'purple', 'orange'];
 
-    if (rollNumber === 1 || rollNumber === 2) {
-      rollType = 'move_free';
-      label = '🏃 PINDAH BEBAS';
-      description = 'Pilih 1 karakter mana saja di papan, lalu klik ruangan sebelahnya untuk memindahkannya!';
-    } else if (rollNumber >= 3 && rollNumber <= 5) {
-      rollType = 'pull_color';
-      targetRoomId = roomKeys[Math.floor(Math.random() * roomKeys.length)];
-      const r = ROOMS_DEF[targetRoomId];
-      label = `🔴🟡🔵 TARIK KE ${r.name.toUpperCase()}`;
-      description = `Tarik 1 karakter dari ruangan mana saja untuk masuk ke [${r.name}]!`;
-    } else {
-      // Check if any room has >= 2 characters to eliminate (anti soft-lock)
-      const livingChars = Object.values(state.boardCharacters || {}).filter(c => c.isAlive);
-      const roomCounts = {};
-      livingChars.forEach(c => {
-        roomCounts[c.roomId] = (roomCounts[c.roomId] || 0) + 1;
-      });
-      const hasEligibleRoom = Object.values(roomCounts).some(cnt => cnt >= 2);
-
-      if (!hasEligibleRoom) {
+      if (rollNumber === 1 || rollNumber === 2) {
         rollType = 'move_free';
-        label = '🏃 PINDAH BEBAS (ANTI SOFT-LOCK)';
-        description = 'Seluruh tamu pesta berdiri sendirian di ruangan! Dadu dialihkan menjadi Pindah Bebas.';
+        label = '🏃 PINDAH BEBAS';
+        description = 'Pilih 1 karakter mana saja di papan, lalu klik ruangan sebelahnya untuk memindahkannya!';
+      } else if (rollNumber >= 3 && rollNumber <= 5) {
+        rollType = 'pull_color';
+        targetRoomId = roomKeys[Math.floor(Math.random() * roomKeys.length)];
+        const r = ROOMS_DEF[targetRoomId];
+        label = `🔴🟡🔵 TARIK KE ${r.name.toUpperCase()}`;
+        description = `Tarik 1 karakter dari ruangan mana saja untuk masuk ke [${r.name}]!`;
       } else {
-        rollType = 'eliminate';
-        label = '💀 ELIMINASI (INTEROGASI)';
-        description = 'Pilih 1 karakter di ruangan yang berisi minimal 2 tamu untuk dieliminasi dari pesta!';
+        // Check if any room has >= 2 characters to eliminate (anti soft-lock)
+        const livingChars = Object.values(state.boardCharacters || {}).filter(c => c.isAlive);
+        const roomCounts = {};
+        livingChars.forEach(c => {
+          roomCounts[c.roomId] = (roomCounts[c.roomId] || 0) + 1;
+        });
+        const hasEligibleRoom = Object.values(roomCounts).some(cnt => cnt >= 2);
+
+        if (!hasEligibleRoom) {
+          rollType = 'move_free';
+          label = '🏃 PINDAH BEBAS (ANTI SOFT-LOCK)';
+          description = 'Seluruh tamu pesta berdiri sendirian di ruangan! Dadu dialihkan menjadi Pindah Bebas.';
+        } else {
+          rollType = 'eliminate';
+          label = '💀 ELIMINASI (INTEROGASI)';
+          description = 'Pilih 1 karakter di ruangan yang berisi minimal 2 tamu untuk dieliminasi dari pesta!';
+        }
       }
+
+      const actionLogs = [...(state.actionLogs || [])];
+      actionLogs.push({
+        text: `🎲 [${currentPlayer.name}] mengocok dadu dan mendapatkan hasil: "${label}".`,
+        timestamp: Date.now()
+      });
+
+      await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+        actionLogs,
+        diceState: {
+          hasRolled: true,
+          rollType,
+          targetRoomId,
+          label,
+          description
+        }
+      });
+
+      selectedCharacterId = null;
+    } catch (err) {
+      UI.Logger('COSTUME-DETECTIVE', 'Error rolling dice:', err, true);
+      UI.Toast('Gagal mengocok dadu: ' + (err.message || err), 'error');
+    } finally {
+      isRolling = false;
     }
-
-    const actionLogs = [...(state.actionLogs || [])];
-    actionLogs.push({
-      text: `🎲 [${currentPlayer.name}] mengocok dadu dan mendapatkan hasil: "${label}".`,
-      timestamp: Date.now()
-    });
-
-    await DB.updateGameState(currentRoom.code, 'costumeDetective', {
-      actionLogs,
-      diceState: {
-        hasRolled: true,
-        rollType,
-        targetRoomId,
-        label,
-        description
-      }
-    });
-
-    selectedCharacterId = null;
-    isRolling = false;
   }
 
   function selectCharacter(charId) {
@@ -824,33 +844,40 @@ const CostumeDetectiveGame = (function () {
     if (state.currentTurnPlayerId !== currentPlayer.id) return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const boardCharacters = { ...state.boardCharacters };
-    const char = boardCharacters[selectedCharacterId];
-    const prevRoomName = ROOMS_DEF[char.roomId]?.name;
-    const destRoomName = ROOMS_DEF[destinationRoomId]?.name;
+      const boardCharacters = { ...state.boardCharacters };
+      const char = boardCharacters[selectedCharacterId];
+      if (!char) return;
+      const prevRoomName = ROOMS_DEF[char.roomId]?.name;
+      const destRoomName = ROOMS_DEF[destinationRoomId]?.name;
 
-    char.roomId = destinationRoomId;
+      char.roomId = destinationRoomId;
 
-    const actionLogs = [...(state.actionLogs || [])];
-    actionLogs.push({
-      text: `[${currentPlayer.name}] memindahkan [${char.emoji} ${char.name}] dari ${prevRoomName} ke ${destRoomName}.`,
-      timestamp: Date.now()
-    });
+      const actionLogs = [...(state.actionLogs || [])];
+      actionLogs.push({
+        text: `[${currentPlayer.name}] memindahkan [${char.emoji} ${char.name}] dari ${prevRoomName} ke ${destRoomName}.`,
+        timestamp: Date.now()
+      });
 
-    const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
+      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
 
-    await DB.updateGameState(currentRoom.code, 'costumeDetective', {
-      boardCharacters,
-      actionLogs,
-      currentTurnPlayerId: nextTurnData.playerId,
-      turnIndex: nextTurnData.index,
-      diceState: { hasRolled: false }
-    });
+      await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+        boardCharacters,
+        actionLogs,
+        currentTurnPlayerId: nextTurnData.playerId,
+        turnIndex: nextTurnData.index,
+        diceState: { hasRolled: false }
+      });
 
-    selectedCharacterId = null;
-    isSubmitting = false;
+      selectedCharacterId = null;
+    } catch (err) {
+      UI.Logger('COSTUME-DETECTIVE', 'Error moving character:', err, true);
+      UI.Toast('Gagal memindahkan karakter: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -862,32 +889,39 @@ const CostumeDetectiveGame = (function () {
     if (state.currentTurnPlayerId !== currentPlayer.id) return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const boardCharacters = { ...state.boardCharacters };
-    const char = boardCharacters[charId];
-    const targetRoomName = ROOMS_DEF[targetRoomId]?.name;
+      const boardCharacters = { ...state.boardCharacters };
+      const char = boardCharacters[charId];
+      if (!char) return;
+      const targetRoomName = ROOMS_DEF[targetRoomId]?.name;
 
-    char.roomId = targetRoomId;
+      char.roomId = targetRoomId;
 
-    const actionLogs = [...(state.actionLogs || [])];
-    actionLogs.push({
-      text: `[${currentPlayer.name}] menarik [${char.emoji} ${char.name}] masuk ke ${targetRoomName}.`,
-      timestamp: Date.now()
-    });
+      const actionLogs = [...(state.actionLogs || [])];
+      actionLogs.push({
+        text: `[${currentPlayer.name}] menarik [${char.emoji} ${char.name}] masuk ke ${targetRoomName}.`,
+        timestamp: Date.now()
+      });
 
-    const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
+      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
 
-    await DB.updateGameState(currentRoom.code, 'costumeDetective', {
-      boardCharacters,
-      actionLogs,
-      currentTurnPlayerId: nextTurnData.playerId,
-      turnIndex: nextTurnData.index,
-      diceState: { hasRolled: false }
-    });
+      await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+        boardCharacters,
+        actionLogs,
+        currentTurnPlayerId: nextTurnData.playerId,
+        turnIndex: nextTurnData.index,
+        diceState: { hasRolled: false }
+      });
 
-    selectedCharacterId = null;
-    isSubmitting = false;
+      selectedCharacterId = null;
+    } catch (err) {
+      UI.Logger('COSTUME-DETECTIVE', 'Error pulling character:', err, true);
+      UI.Toast('Gagal menarik karakter: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -910,42 +944,48 @@ const CostumeDetectiveGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.gong();
+    try {
+      UI.Sound.gong();
 
-    char.isAlive = false;
+      char.isAlive = false;
 
-    const roomName = ROOMS_DEF[char.roomId]?.name;
-    const actionLogs = [...(state.actionLogs || [])];
-    actionLogs.push({
-      text: `💥 [${currentPlayer.name}] menginterogasi dan MENGELIMINASI [${char.emoji} ${char.name}] di ${roomName}!`,
-      timestamp: Date.now()
-    });
-
-    // Check Win Condition
-    const winResult = checkVictory(state.playerSecrets, boardCharacters);
-
-    if (winResult.gameOver) {
-      await DB.updateGameState(currentRoom.code, 'costumeDetective', {
-        boardCharacters,
-        actionLogs,
-        status: 'game_over',
-        winnerPlayerId: winResult.winnerPlayerId,
-        winnerCharacterId: winResult.winnerCharacterId,
-        diceState: { hasRolled: false }
+      const roomName = ROOMS_DEF[char.roomId]?.name;
+      const actionLogs = [...(state.actionLogs || [])];
+      actionLogs.push({
+        text: `💥 [${currentPlayer.name}] menginterogasi dan MENGELIMINASI [${char.emoji} ${char.name}] di ${roomName}!`,
+        timestamp: Date.now()
       });
-    } else {
-      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
-      await DB.updateGameState(currentRoom.code, 'costumeDetective', {
-        boardCharacters,
-        actionLogs,
-        currentTurnPlayerId: nextTurnData.playerId,
-        turnIndex: nextTurnData.index,
-        diceState: { hasRolled: false }
-      });
+
+      // Check Win Condition
+      const winResult = checkVictory(state.playerSecrets, boardCharacters);
+
+      if (winResult.gameOver) {
+        await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+          boardCharacters,
+          actionLogs,
+          status: 'game_over',
+          winnerPlayerId: winResult.winnerPlayerId,
+          winnerCharacterId: winResult.winnerCharacterId,
+          diceState: { hasRolled: false }
+        });
+      } else {
+        const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
+        await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+          boardCharacters,
+          actionLogs,
+          currentTurnPlayerId: nextTurnData.playerId,
+          turnIndex: nextTurnData.index,
+          diceState: { hasRolled: false }
+        });
+      }
+
+      selectedCharacterId = null;
+    } catch (err) {
+      UI.Logger('COSTUME-DETECTIVE', 'Error eliminating character:', err, true);
+      UI.Toast('Gagal mengeliminasi karakter: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    selectedCharacterId = null;
-    isSubmitting = false;
   }
 
   /**
@@ -957,24 +997,29 @@ const CostumeDetectiveGame = (function () {
     if (state.currentTurnPlayerId !== currentPlayer.id) return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const actionLogs = [...(state.actionLogs || [])];
-    actionLogs.push({
-      text: `⏭️ [${currentPlayer.name}] melewati giliran eliminasi.`,
-      timestamp: Date.now()
-    });
+      const actionLogs = [...(state.actionLogs || [])];
+      actionLogs.push({
+        text: `⏭️ [${currentPlayer.name}] melewati giliran eliminasi.`,
+        timestamp: Date.now()
+      });
 
-    const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
-    await DB.updateGameState(currentRoom.code, 'costumeDetective', {
-      actionLogs,
-      currentTurnPlayerId: nextTurnData.playerId,
-      turnIndex: nextTurnData.index,
-      diceState: { hasRolled: false }
-    });
+      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex);
+      await DB.updateGameState(currentRoom.code, 'costumeDetective', {
+        actionLogs,
+        currentTurnPlayerId: nextTurnData.playerId,
+        turnIndex: nextTurnData.index,
+        diceState: { hasRolled: false }
+      });
 
-    selectedCharacterId = null;
-    isSubmitting = false;
+      selectedCharacterId = null;
+    } catch (err) {
+      UI.Logger('COSTUME-DETECTIVE', 'Error skipping elimination:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**

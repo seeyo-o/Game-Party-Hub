@@ -260,11 +260,13 @@ const VotingGame = (function () {
   let isSubmitting = false;
 
   /**
-   * Helper to retrieve voting state seamlessly from room data
+   * Helper to retrieve voting state seamlessly from room data with defensive normalization
    */
   function getVotingState(roomData) {
     if (!roomData) return {};
-    return roomData.votingGame || roomData.gameState?.voting || {};
+    const state = roomData.votingGame || roomData.gameState?.voting || {};
+    if (!state.votes || typeof state.votes !== 'object') state.votes = {};
+    return state;
   }
 
   /**
@@ -891,14 +893,19 @@ const VotingGame = (function () {
     async revealResults() {
       if (!currentRoom || !currentPlayer?.isHost) return;
 
-      UI.Sound.fanfare();
-      UI.Confetti();
-      UI.Logger('VOTING', 'Host manually revealed voting results');
+      try {
+        UI.Sound.fanfare();
+        UI.Confetti();
+        UI.Logger('VOTING', 'Host manually revealed voting results');
 
-      await DB.updateGameState(currentRoom.code, 'voting', {
-        status: 'results',
-        revealed: true
-      });
+        await DB.updateGameState(currentRoom.code, 'voting', {
+          status: 'results',
+          revealed: true
+        });
+      } catch (err) {
+        UI.Logger('VOTING', 'Error revealing results:', err, true);
+        UI.Toast('Gagal membuka hasil: ' + (err.message || err), 'error');
+      }
     },
 
     /**
@@ -907,23 +914,28 @@ const VotingGame = (function () {
     async nextRound() {
       if (!currentRoom || !currentPlayer?.isHost) return;
 
-      const votingData = getVotingState(currentRoom);
-      const nextIndex = ((votingData.questionIndex || 0) + 1) % QUESTIONS.length;
-      const nextRoundNum = (votingData.round || 1) + 1;
+      try {
+        const votingData = getVotingState(currentRoom);
+        const nextIndex = ((votingData.questionIndex || 0) + 1) % QUESTIONS.length;
+        const nextRoundNum = (votingData.round || 1) + 1;
 
-      localSelectedVotes.clear();
-      UI.Sound.click();
-      UI.Logger('VOTING', `Advancing to Round ${nextRoundNum}, Question #${nextIndex + 1}`);
+        localSelectedVotes.clear();
+        UI.Sound.click();
+        UI.Logger('VOTING', `Advancing to Round ${nextRoundNum}, Question #${nextIndex + 1}`);
 
-      await DB.updateGameState(currentRoom.code, 'voting', {
-        questionIndex: nextIndex,
-        votes: {},
-        status: 'voting',
-        revealed: false,
-        round: nextRoundNum
-      });
+        await DB.updateGameState(currentRoom.code, 'voting', {
+          questionIndex: nextIndex,
+          votes: {},
+          status: 'voting',
+          revealed: false,
+          round: nextRoundNum
+        });
 
-      UI.Toast('Ronde baru dimulai! Bersiap memilih...', 'info');
+        UI.Toast('Ronde baru dimulai! Bersiap memilih...', 'info');
+      } catch (err) {
+        UI.Logger('VOTING', 'Error advancing round:', err, true);
+        UI.Toast('Gagal memulai ronde berikutnya: ' + (err.message || err), 'error');
+      }
     },
 
     /**
@@ -932,16 +944,20 @@ const VotingGame = (function () {
     async restartRound() {
       if (!currentRoom || !currentPlayer?.isHost) return;
 
-      localSelectedVotes.clear();
-      UI.Sound.click();
+      try {
+        localSelectedVotes.clear();
+        UI.Sound.click();
 
-      await DB.updateGameState(currentRoom.code, 'voting', {
-        votes: {},
-        status: 'voting',
-        revealed: false
-      });
+        await DB.updateGameState(currentRoom.code, 'voting', {
+          votes: {},
+          status: 'voting',
+          revealed: false
+        });
 
-      UI.Toast('Pertanyaan diulang kembali.', 'info');
+        UI.Toast('Pertanyaan diulang kembali.', 'info');
+      } catch (err) {
+        UI.Logger('VOTING', 'Error restarting round:', err, true);
+      }
     },
 
     /**

@@ -64,11 +64,24 @@ const SpicyGame = (function () {
   };
 
   /**
-   * Helper: Mengambil state permainan Spicy dari room
+   * Helper: Mengambil state permainan Spicy dari room dengan normalisasi default
    */
   function getGameState(roomData) {
     if (!roomData) return {};
-    return roomData.spicyGame || roomData.gameState?.spicy || {};
+    const state = roomData.spicyGame || roomData.gameState?.spicy || {};
+    if (!Array.isArray(state.stack)) state.stack = [];
+    if (!Array.isArray(state.deck)) state.deck = [];
+    if (!Array.isArray(state.actionLogs)) state.actionLogs = [];
+    if (!Array.isArray(state.turnOrder)) state.turnOrder = [];
+    if (!state.players || typeof state.players !== 'object') state.players = {};
+    Object.values(state.players).forEach(p => {
+      if (p) {
+        if (!Array.isArray(p.hand)) p.hand = [];
+        if (typeof p.trophiesCount !== 'number') p.trophiesCount = 0;
+        if (typeof p.wonCardsCount !== 'number') p.wonCardsCount = 0;
+      }
+    });
+    return state;
   }
 
   /**
@@ -176,63 +189,69 @@ const SpicyGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.fanfare();
-    UI.Logger('SPICY', 'Starting new game of Spicy with players:', playersList);
+    try {
+      UI.Sound.fanfare();
+      UI.Logger('SPICY', 'Starting new game of Spicy with players:', playersList);
 
-    // 1. Buat dan acak 100 kartu
-    let rawDeck = generateDeck();
+      // 1. Buat dan acak 100 kartu
+      let rawDeck = generateDeck();
 
-    // 2. Bagikan 6 kartu ke masing-masing pemain
-    const playersData = {};
-    const turnOrder = shuffle(playersList.map(p => p.id));
+      // 2. Bagikan 6 kartu ke masing-masing pemain
+      const playersData = {};
+      const turnOrder = shuffle(playersList.map(p => p.id));
 
-    turnOrder.forEach(pid => {
-      const p = currentRoom.players[pid];
-      const hand = rawDeck.splice(0, 6);
-      playersData[pid] = {
-        id: pid,
-        name: p.name,
-        hand: hand,
-        wonCardsCount: 0,
-        trophiesCount: 0
+      turnOrder.forEach(pid => {
+        const p = currentRoom.players[pid];
+        const hand = rawDeck.splice(0, 6);
+        playersData[pid] = {
+          id: pid,
+          name: p.name,
+          hand: hand,
+          wonCardsCount: 0,
+          trophiesCount: 0
+        };
+      });
+
+      // 3. Selipkan kartu World's End di 15-20 kartu terbawah dek tersisa
+      const { deck: finalDeck, insertPositionFromBottom } = insertWorldsEndCard(rawDeck);
+
+      // 4. Siapkan Initial Game State
+      const initialGameState = {
+        status: 'playing', // 'playing' | 'challenge_revealed' | 'game_over'
+        turnOrder: turnOrder,
+        turnIndex: 0,
+        currentTurnPlayerId: turnOrder[0],
+        players: playersData,
+        trophiesAvailable: 3,
+        deck: finalDeck,
+        deckCount: finalDeck.length,
+        worldsEndBottomOffset: insertPositionFromBottom,
+        stack: [],
+        currentClaim: null,
+        lastCardPlayerId: null,
+        challengeResult: null,
+        winnerPlayerId: null,
+        endReason: null,
+        finalStandings: null,
+        actionLogs: [
+          {
+            text: `🌶️ Permainan Spicy dimulai! ${playersList.length} pemain masing-masing memegang 6 kartu. Giliran pertama: [${playersData[turnOrder[0]].name}].`,
+            timestamp: Date.now()
+          }
+        ]
       };
-    });
 
-    // 3. Selipkan kartu World's End di 15-20 kartu terbawah dek tersisa
-    const { deck: finalDeck, insertPositionFromBottom } = insertWorldsEndCard(rawDeck);
+      await DB.updateGameState(currentRoom.code, 'spicy', initialGameState);
 
-    // 4. Siapkan Initial Game State
-    const initialGameState = {
-      status: 'playing', // 'playing' | 'challenge_revealed' | 'game_over'
-      turnOrder: turnOrder,
-      turnIndex: 0,
-      currentTurnPlayerId: turnOrder[0],
-      players: playersData,
-      trophiesAvailable: 3,
-      deck: finalDeck,
-      deckCount: finalDeck.length,
-      worldsEndBottomOffset: insertPositionFromBottom,
-      stack: [],
-      currentClaim: null,
-      lastCardPlayerId: null,
-      challengeResult: null,
-      winnerPlayerId: null,
-      endReason: null,
-      finalStandings: null,
-      actionLogs: [
-        {
-          text: `🌶️ Permainan Spicy dimulai! ${playersList.length} pemain masing-masing memegang 6 kartu. Giliran pertama: [${playersData[turnOrder[0]].name}].`,
-          timestamp: Date.now()
-        }
-      ]
-    };
-
-    await DB.updateGameState(currentRoom.code, 'spicy', initialGameState);
-
-    selectedCardId = null;
-    selectedClaimSpice = null;
-    selectedClaimNumber = null;
-    isSubmitting = false;
+      selectedCardId = null;
+      selectedClaimSpice = null;
+      selectedClaimNumber = null;
+    } catch (err) {
+      UI.Logger('SPICY', 'Error starting game:', err, true);
+      UI.Toast('Gagal memulai Spicy: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -346,75 +365,86 @@ const SpicyGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.pop();
+    try {
+      UI.Sound.pop();
 
-    // Copy state mendalam
-    const newState = JSON.parse(JSON.stringify(state));
-    const players = newState.players;
-    const player = players[currentPlayer.id];
+      // Copy state mendalam
+      const newState = JSON.parse(JSON.stringify(state));
+      const players = newState.players || {};
+      const player = players[currentPlayer.id];
+      if (!player) {
+        UI.Toast('Data pemain tidak ditemukan!', 'error');
+        return;
+      }
 
-    // 1. Berikan piala ke pemain sebelumnya jika dia habis kartu dan tidak ditantang
-    resolveUnchallengedLastCard(newState);
-    if (newState.status === 'game_over') {
-      finalizeGame(newState);
-      await DB.updateGameState(currentRoom.code, 'spicy', newState);
-      isSubmitting = false;
-      return;
-    }
+      // 1. Berikan piala ke pemain sebelumnya jika dia habis kartu dan tidak ditantang
+      resolveUnchallengedLastCard(newState);
+      if (newState.status === 'game_over') {
+        finalizeGame(newState);
+        await DB.updateGameState(currentRoom.code, 'spicy', newState);
+        return;
+      }
 
-    // 2. Ambil kartu dari tangan
-    const cardIndex = player.hand.findIndex(c => c.id === selectedCardId);
-    if (cardIndex === -1) {
-      UI.Toast('Kartu yang dipilih tidak ditemukan di tanganmu!', 'error');
-      isSubmitting = false;
-      return;
-    }
-    const playedCard = player.hand.splice(cardIndex, 1)[0];
+      // 2. Ambil kartu dari tangan
+      if (!Array.isArray(player.hand)) player.hand = [];
+      const cardIndex = player.hand.findIndex(c => c.id === selectedCardId);
+      if (cardIndex === -1) {
+        UI.Toast('Kartu yang dipilih tidak ditemukan di tanganmu!', 'error');
+        return;
+      }
+      const playedCard = player.hand.splice(cardIndex, 1)[0];
 
-    // 3. Masukkan ke tumpukan tengah
-    const claimData = {
-      spice: selectedClaimSpice,
-      number: parseInt(selectedClaimNumber, 10),
-      playerId: currentPlayer.id,
-      playerName: currentPlayer.name
-    };
+      // 3. Masukkan ke tumpukan tengah
+      const claimData = {
+        spice: selectedClaimSpice,
+        number: parseInt(selectedClaimNumber, 10),
+        playerId: currentPlayer.id,
+        playerName: currentPlayer.name
+      };
 
-    newState.stack.push({
-      card: playedCard,
-      claim: claimData,
-      playedByPlayerId: currentPlayer.id,
-      playedByPlayerName: currentPlayer.name
-    });
+      if (!Array.isArray(newState.stack)) newState.stack = [];
+      newState.stack.push({
+        card: playedCard,
+        claim: claimData,
+        playedByPlayerId: currentPlayer.id,
+        playedByPlayerName: currentPlayer.name
+      });
 
-    newState.currentClaim = claimData;
+      newState.currentClaim = claimData;
 
-    // Catat log aksi
-    const spiceInfo = SPICE_META[claimData.spice];
-    newState.actionLogs.push({
-      text: `🃏 [${currentPlayer.name}] meletakkan kartu tertutup dengan klaim [${spiceInfo.emoji} ${spiceInfo.name} ${claimData.number}]. (Sisa kartu di tangan: ${player.hand.length})`,
-      timestamp: Date.now()
-    });
-
-    // Cek jika kartu ini adalah kartu terakhir di tangan pemain!
-    if (player.hand.length === 0) {
-      newState.lastCardPlayerId = currentPlayer.id;
+      // Catat log aksi
+      const spiceInfo = SPICE_META[claimData.spice] || SPICE_META.chili;
+      if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
       newState.actionLogs.push({
-        text: `⚠️ [${currentPlayer.name}] telah memainkan KARTU TERAKHIR di tangannya! Pemain lain berkesempatan menantangnya sekarang.`,
+        text: `🃏 [${currentPlayer.name}] meletakkan kartu tertutup dengan klaim [${spiceInfo.emoji} ${spiceInfo.name} ${claimData.number}]. (Sisa kartu di tangan: ${player.hand.length})`,
         timestamp: Date.now()
       });
+
+      // Cek jika kartu ini adalah kartu terakhir di tangan pemain!
+      if (player.hand.length === 0) {
+        newState.lastCardPlayerId = currentPlayer.id;
+        newState.actionLogs.push({
+          text: `⚠️ [${currentPlayer.name}] telah memainkan KARTU TERAKHIR di tangannya! Pemain lain berkesempatan menantangnya sekarang.`,
+          timestamp: Date.now()
+        });
+      }
+
+      // 4. Pindahkan giliran ke pemain berikutnya
+      const nextTurnIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
+      newState.turnIndex = nextTurnIndex;
+      newState.currentTurnPlayerId = newState.turnOrder[nextTurnIndex];
+
+      await DB.updateGameState(currentRoom.code, 'spicy', newState);
+
+      selectedCardId = null;
+      selectedClaimSpice = null;
+      selectedClaimNumber = null;
+    } catch (err) {
+      UI.Logger('SPICY', 'Error in playCard:', err, true);
+      UI.Toast('Gagal memainkan kartu: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    // 4. Pindahkan giliran ke pemain berikutnya
-    const nextTurnIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
-    newState.turnIndex = nextTurnIndex;
-    newState.currentTurnPlayerId = newState.turnOrder[nextTurnIndex];
-
-    await DB.updateGameState(currentRoom.code, 'spicy', newState);
-
-    selectedCardId = null;
-    selectedClaimSpice = null;
-    selectedClaimNumber = null;
-    isSubmitting = false;
   }
 
   /**
@@ -435,65 +465,73 @@ const SpicyGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.tick();
+    try {
+      UI.Sound.tick();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    const players = newState.players;
-    const player = players[currentPlayer.id];
+      const newState = JSON.parse(JSON.stringify(state));
+      const players = newState.players || {};
+      const player = players[currentPlayer.id];
+      if (!player) return;
 
-    // 1. Berikan piala ke pemain sebelumnya jika dia habis kartu dan tidak ditantang
-    resolveUnchallengedLastCard(newState);
-    if (newState.status === 'game_over') {
-      finalizeGame(newState);
-      await DB.updateGameState(currentRoom.code, 'spicy', newState);
-      isSubmitting = false;
-      return;
-    }
+      // 1. Berikan piala ke pemain sebelumnya jika dia habis kartu dan tidak ditantang
+      resolveUnchallengedLastCard(newState);
+      if (newState.status === 'game_over') {
+        finalizeGame(newState);
+        await DB.updateGameState(currentRoom.code, 'spicy', newState);
+        return;
+      }
 
-    // 2. Ambil 1 kartu dari dek
-    if (newState.deck.length === 0) {
-      newState.status = 'game_over';
-      newState.endReason = 'deck_empty';
-      finalizeGame(newState);
-      await DB.updateGameState(currentRoom.code, 'spicy', newState);
-      isSubmitting = false;
-      return;
-    }
+      // 2. Ambil 1 kartu dari dek
+      if (!Array.isArray(newState.deck)) newState.deck = [];
+      if (newState.deck.length === 0) {
+        newState.status = 'game_over';
+        newState.endReason = 'deck_empty';
+        finalizeGame(newState);
+        await DB.updateGameState(currentRoom.code, 'spicy', newState);
+        return;
+      }
 
-    const drawnCard = newState.deck.shift();
+      const drawnCard = newState.deck.shift();
 
-    // Cek apakah kartu yang terambil adalah kartu Kiamat (World's End)!
-    if (drawnCard.type === 'worlds_end') {
-      UI.Sound.fanfare();
+      // Cek apakah kartu yang terambil adalah kartu Kiamat (World's End)!
+      if (drawnCard.type === 'worlds_end') {
+        UI.Sound.fanfare();
+        if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
+        newState.actionLogs.push({
+          text: `☄️ KIAMAT TIBA! Kartu [World's End] terambil dari dek saat [${currentPlayer.name}] melakukan Pass! Permainan berakhir seketika!`,
+          timestamp: Date.now()
+        });
+        newState.status = 'game_over';
+        newState.endReason = 'worlds_end';
+        finalizeGame(newState);
+        await DB.updateGameState(currentRoom.code, 'spicy', newState);
+        return;
+      }
+
+      // Tambahkan kartu ke tangan pemain
+      if (!Array.isArray(player.hand)) player.hand = [];
+      player.hand.push(drawnCard);
+
+      if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
       newState.actionLogs.push({
-        text: `☄️ KIAMAT TIBA! Kartu [World's End] terambil dari dek saat [${currentPlayer.name}] melakukan Pass! Permainan berakhir seketika!`,
+        text: `📥 [${currentPlayer.name}] memilih PASS dan mengambil 1 kartu dari dek.`,
         timestamp: Date.now()
       });
-      newState.status = 'game_over';
-      newState.endReason = 'worlds_end';
-      finalizeGame(newState);
+
+      // 3. Pindahkan giliran ke pemain berikutnya
+      const nextTurnIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
+      newState.turnIndex = nextTurnIndex;
+      newState.currentTurnPlayerId = newState.turnOrder[nextTurnIndex];
+
       await DB.updateGameState(currentRoom.code, 'spicy', newState);
+
+      selectedCardId = null;
+    } catch (err) {
+      UI.Logger('SPICY', 'Error in passTurn:', err, true);
+      UI.Toast('Gagal pass giliran: ' + (err.message || err), 'error');
+    } finally {
       isSubmitting = false;
-      return;
     }
-
-    // Tambahkan kartu ke tangan pemain
-    player.hand.push(drawnCard);
-
-    newState.actionLogs.push({
-      text: `📥 [${currentPlayer.name}] memilih PASS dan mengambil 1 kartu dari dek.`,
-      timestamp: Date.now()
-    });
-
-    // 3. Pindahkan giliran ke pemain berikutnya
-    const nextTurnIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
-    newState.turnIndex = nextTurnIndex;
-    newState.currentTurnPlayerId = newState.turnOrder[nextTurnIndex];
-
-    await DB.updateGameState(currentRoom.code, 'spicy', newState);
-
-    selectedCardId = null;
-    isSubmitting = false;
   }
 
   /**
@@ -522,186 +560,198 @@ const SpicyGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Logger('SPICY', `Challenge initiated by [${currentPlayer.name}], type: [${challengeType}]`);
+    try {
+      UI.Logger('SPICY', `Challenge initiated by [${currentPlayer.name}], type: [${challengeType}]`);
 
-    const newState = JSON.parse(JSON.stringify(state));
-    const players = newState.players;
-    const challenger = players[currentPlayer.id];
-    const topStackEntry = newState.stack[newState.stack.length - 1];
-    const revealedCard = topStackEntry.card;
-    const claim = newState.currentClaim;
-    const defender = players[claim.playerId];
+      const newState = JSON.parse(JSON.stringify(state));
+      const players = newState.players || {};
+      const challenger = players[currentPlayer.id];
+      const topStackEntry = (newState.stack || [])[newState.stack.length - 1];
+      if (!topStackEntry || !challenger) return;
 
-    // Evaluasi Bagian yang Ditantang Sesuai Aturan Resmi Spicy:
-    let isClaimValid = false;
+      const revealedCard = topStackEntry.card;
+      const claim = newState.currentClaim;
+      const defender = players[claim.playerId];
+      if (!defender) return;
 
-    if (challengeType === 'number') {
-      // Menuduh ANGKANYA SALAH
-      if (revealedCard.type === 'wild_spice') {
-        // Wild Spice sah untuk rempah, tapi TIDAK punya angka -> Klaim angka dianggap SALAH
-        isClaimValid = false;
-      } else if (revealedCard.type === 'wild_number') {
-        // Wild Number sah untuk semua angka 1-10 -> Klaim angka dianggap BENAR
-        isClaimValid = true;
-      } else {
-        // Kartu normal
-        isClaimValid = (revealedCard.number === claim.number);
-      }
-    } else if (challengeType === 'spice') {
-      // Menuduh REMPAHNYA SALAH
-      if (revealedCard.type === 'wild_number') {
-        // Wild Number sah untuk angka, tapi TIDAK punya rempah -> Klaim rempah dianggap SALAH
-        isClaimValid = false;
-      } else if (revealedCard.type === 'wild_spice') {
-        // Wild Spice sah untuk semua rempah -> Klaim rempah dianggap BENAR
-        isClaimValid = true;
-      } else {
-        // Kartu normal
-        isClaimValid = (revealedCard.spice === claim.spice);
-      }
-    }
+      // Evaluasi Bagian yang Ditantang Sesuai Aturan Resmi Spicy:
+      let isClaimValid = false;
 
-    // Tentukan Pemenang & Pecundang Tantangan:
-    // Jika klaim BENAR: Defender MENANG, Penantang KALAH
-    // Jika klaim SALAH: Penantang MENANG, Defender KALAH
-    let winnerId = isClaimValid ? defender.id : challenger.id;
-    let loserId = isClaimValid ? challenger.id : defender.id;
-
-    const winner = players[winnerId];
-    const loser = players[loserId];
-    const capturedCardsCount = newState.stack.length;
-
-    // 1. Pemenang Mengambil Seluruh Kartu di Tumpukan Tengah (+1 Poin per Kartu)
-    winner.wonCardsCount += capturedCardsCount;
-    newState.stack = [];
-    newState.currentClaim = null;
-
-    // 2. Pecundang Mengambil 2 Kartu Penalti dari Dek
-    const penaltyCards = [];
-    let worldsEndHit = false;
-
-    for (let p = 0; p < 2; p++) {
-      if (newState.deck.length > 0) {
-        const cardDrawn = newState.deck.shift();
-        if (cardDrawn.type === 'worlds_end') {
-          worldsEndHit = true;
-          break;
+      if (challengeType === 'number') {
+        // Menuduh ANGKANYA SALAH
+        if (revealedCard.type === 'wild_spice') {
+          // Wild Spice sah untuk rempah, tapi TIDAK punya angka -> Klaim angka dianggap SALAH
+          isClaimValid = false;
+        } else if (revealedCard.type === 'wild_number') {
+          // Wild Number sah untuk semua angka 1-10 -> Klaim angka dianggap BENAR
+          isClaimValid = true;
         } else {
-          penaltyCards.push(cardDrawn);
+          // Kartu normal
+          isClaimValid = (revealedCard.number === claim.number);
+        }
+      } else if (challengeType === 'spice') {
+        // Menuduh REMPAHNYA SALAH
+        if (revealedCard.type === 'wild_number') {
+          // Wild Number sah untuk angka, tapi TIDAK punya rempah -> Klaim rempah dianggap SALAH
+          isClaimValid = false;
+        } else if (revealedCard.type === 'wild_spice') {
+          // Wild Spice sah untuk semua rempah -> Klaim rempah dianggap BENAR
+          isClaimValid = true;
+        } else {
+          // Kartu normal
+          isClaimValid = (revealedCard.spice === claim.spice);
         }
       }
-    }
-    loser.hand.push(...penaltyCards);
 
-    // 3. Cek Status Kartu Terakhir Defender (apakah tangan defender tadi 0 kartu?)
-    let defenderGotTrophy = false;
-    const wasDefenderLastCard = (newState.lastCardPlayerId === defender.id);
+      // Tentukan Pemenang & Pecundang Tantangan:
+      // Jika klaim BENAR: Defender MENANG, Penantang KALAH
+      // Jika klaim SALAH: Penantang MENANG, Defender KALAH
+      let winnerId = isClaimValid ? defender.id : challenger.id;
+      let loserId = isClaimValid ? challenger.id : defender.id;
 
-    if (wasDefenderLastCard) {
-      if (winnerId === defender.id) {
-        // Defender berhasil membuktikan kebenaran kartu terakhirnya!
-        if (newState.trophiesAvailable > 0) {
-          defender.trophiesCount += 1;
-          newState.trophiesAvailable -= 1;
-          defenderGotTrophy = true;
+      const winner = players[winnerId];
+      const loser = players[loserId];
+      const capturedCardsCount = (newState.stack || []).length;
 
-          // Defender mengambil 6 kartu baru dari dek
-          const freshCards = [];
-          for (let f = 0; f < 6; f++) {
-            if (newState.deck.length > 0) {
-              const c = newState.deck.shift();
-              if (c.type === 'worlds_end') {
-                worldsEndHit = true;
-                break;
-              } else {
-                freshCards.push(c);
+      // 1. Pemenang Mengambil Seluruh Kartu di Tumpukan Tengah (+1 Poin per Kartu)
+      winner.wonCardsCount = (winner.wonCardsCount || 0) + capturedCardsCount;
+      newState.stack = [];
+      newState.currentClaim = null;
+
+      // 2. Pecundang Mengambil 2 Kartu Penalti dari Dek
+      const penaltyCards = [];
+      let worldsEndHit = false;
+
+      if (!Array.isArray(newState.deck)) newState.deck = [];
+      for (let p = 0; p < 2; p++) {
+        if (newState.deck.length > 0) {
+          const cardDrawn = newState.deck.shift();
+          if (cardDrawn.type === 'worlds_end') {
+            worldsEndHit = true;
+            break;
+          } else {
+            penaltyCards.push(cardDrawn);
+          }
+        }
+      }
+      if (!Array.isArray(loser.hand)) loser.hand = [];
+      loser.hand.push(...penaltyCards);
+
+      // 3. Cek Status Kartu Terakhir Defender (apakah tangan defender tadi 0 kartu?)
+      let defenderGotTrophy = false;
+      const wasDefenderLastCard = (newState.lastCardPlayerId === defender.id);
+
+      if (wasDefenderLastCard) {
+        if (winnerId === defender.id) {
+          // Defender berhasil membuktikan kebenaran kartu terakhirnya!
+          if (newState.trophiesAvailable > 0) {
+            defender.trophiesCount = (defender.trophiesCount || 0) + 1;
+            newState.trophiesAvailable -= 1;
+            defenderGotTrophy = true;
+
+            // Defender mengambil 6 kartu baru dari dek
+            const freshCards = [];
+            for (let f = 0; f < 6; f++) {
+              if (newState.deck.length > 0) {
+                const c = newState.deck.shift();
+                if (c.type === 'worlds_end') {
+                  worldsEndHit = true;
+                  break;
+                } else {
+                  freshCards.push(c);
+                }
               }
             }
+            if (!Array.isArray(defender.hand)) defender.hand = [];
+            defender.hand.push(...freshCards);
           }
-          defender.hand.push(...freshCards);
+        } else {
+          // Defender tertangkap basah berbohong pada kartu terakhirnya!
         }
-      } else {
-        // Defender tertangkap basah berbohong pada kartu terakhirnya!
-        // Tidak dapat piala, dan menerima 2 kartu penalti (sehingga tangannya tidak kosong lagi)
+        newState.lastCardPlayerId = null;
       }
-      newState.lastCardPlayerId = null;
-    }
 
-    // 4. Pecundang Tantangan Menjadi Pemain Pertama yang Memulai Tumpukan Baru!
-    const loserTurnIndex = newState.turnOrder.indexOf(loserId);
-    newState.turnIndex = loserTurnIndex;
-    newState.currentTurnPlayerId = loserId;
+      // 4. Pecundang Tantangan Menjadi Pemain Pertama yang Memulai Tumpukan Baru!
+      const loserTurnIndex = newState.turnOrder.indexOf(loserId);
+      newState.turnIndex = loserTurnIndex;
+      newState.currentTurnPlayerId = loserId;
 
-    // 5. Susun Hasil Tantangan untuk Modal / Banner Visual
-    const challengeTypeName = challengeType === 'number' ? 'ANGKA 🔢' : 'REMPAH 🌶️';
-    const challengeResult = {
-      challengerId: challenger.id,
-      challengerName: challenger.name,
-      defenderId: defender.id,
-      defenderName: defender.name,
-      challengeType: challengeType,
-      challengeTypeName: challengeTypeName,
-      claim: claim,
-      revealedCard: revealedCard,
-      isClaimValid: isClaimValid,
-      winnerId: winner.id,
-      winnerName: winner.name,
-      loserId: loser.id,
-      loserName: loser.name,
-      cardsWonCount: capturedCardsCount,
-      defenderGotTrophy: defenderGotTrophy,
-      timestamp: Date.now()
-    };
-    newState.challengeResult = challengeResult;
+      // 5. Susun Hasil Tantangan untuk Modal / Banner Visual
+      const challengeTypeName = challengeType === 'number' ? 'ANGKA 🔢' : 'REMPAH 🌶️';
+      const challengeResult = {
+        challengerId: challenger.id,
+        challengerName: challenger.name,
+        defenderId: defender.id,
+        defenderName: defender.name,
+        challengeType: challengeType,
+        challengeTypeName: challengeTypeName,
+        claim: claim,
+        revealedCard: revealedCard,
+        isClaimValid: isClaimValid,
+        winnerId: winner.id,
+        winnerName: winner.name,
+        loserId: loser.id,
+        loserName: loser.name,
+        cardsWonCount: capturedCardsCount,
+        defenderGotTrophy: defenderGotTrophy,
+        timestamp: Date.now()
+      };
+      newState.challengeResult = challengeResult;
 
-    // Log Hasil Tantangan
-    newState.actionLogs.push({
-      text: `⚡ [${challenger.name}] MENANTANG [${defender.name}] pada bagian [${challengeTypeName}]! Kartu asli dibuka: [${revealedCard.name}]. Hasil klaim: ${isClaimValid ? 'BENAR' : 'SALAH'}! [${winner.name}] MENANG tantangan dan mengamankan ${capturedCardsCount} kartu (+${capturedCardsCount} Poin). [${loser.name}] mengambil 2 kartu penalti dan memulai tumpukan baru.`,
-      timestamp: Date.now()
-    });
-
-    // 6. Evaluasi Kondisi Akhir Permainan
-    if (worldsEndHit) {
-      newState.status = 'game_over';
-      newState.endReason = 'worlds_end';
+      // Log Hasil Tantangan
+      if (!Array.isArray(newState.actionLogs)) newState.actionLogs = [];
       newState.actionLogs.push({
-        text: `☄️ Kartu World's End terambil saat penarikan penalti! Permainan langsung selesai!`,
+        text: `⚡ [${challenger.name}] MENANTANG [${defender.name}] pada bagian [${challengeTypeName}]! Kartu asli dibuka: [${revealedCard.name}]. Hasil klaim: ${isClaimValid ? 'BENAR' : 'SALAH'}! [${winner.name}] MENANG tantangan dan mengamankan ${capturedCardsCount} kartu (+${capturedCardsCount} Poin). [${loser.name}] mengambil 2 kartu penalti dan memulai tumpukan baru.`,
         timestamp: Date.now()
       });
-      finalizeGame(newState);
-    } else if (winner.trophiesCount >= 2) {
-      newState.status = 'game_over';
-      newState.winnerPlayerId = winner.id;
-      newState.endReason = 'trophy_double';
-      newState.actionLogs.push({
-        text: `👑 [${winner.name}] berhasil mengumpulkan 2 PIALA! Menang Instan sebagai Juara Rempah Terpedas!`,
-        timestamp: Date.now()
-      });
-      finalizeGame(newState);
-    } else if (newState.trophiesAvailable === 0) {
-      newState.status = 'game_over';
-      newState.endReason = 'trophies_depleted';
-      newState.actionLogs.push({
-        text: `🏆 Seluruh 3 Piala telah terambil! Permainan selesai.`,
-        timestamp: Date.now()
-      });
-      finalizeGame(newState);
-    } else if (newState.deck.length === 0) {
-      newState.status = 'game_over';
-      newState.endReason = 'deck_empty';
-      finalizeGame(newState);
-    } else {
-      newState.status = 'challenge_revealed';
-    }
 
-    if (isClaimValid) {
-      UI.Sound.fanfare();
-    } else {
-      UI.Sound.pop();
-    }
+      // 6. Evaluasi Kondisi Akhir Permainan
+      if (worldsEndHit) {
+        newState.status = 'game_over';
+        newState.endReason = 'worlds_end';
+        newState.actionLogs.push({
+          text: `☄️ Kartu World's End terambil saat penarikan penalti! Permainan langsung selesai!`,
+          timestamp: Date.now()
+        });
+        finalizeGame(newState);
+      } else if (winner.trophiesCount >= 2) {
+        newState.status = 'game_over';
+        newState.winnerPlayerId = winner.id;
+        newState.endReason = 'trophy_double';
+        newState.actionLogs.push({
+          text: `👑 [${winner.name}] berhasil mengumpulkan 2 PIALA! Menang Instan sebagai Juara Rempah Terpedas!`,
+          timestamp: Date.now()
+        });
+        finalizeGame(newState);
+      } else if (newState.trophiesAvailable === 0) {
+        newState.status = 'game_over';
+        newState.endReason = 'trophies_depleted';
+        newState.actionLogs.push({
+          text: `🏆 Seluruh 3 Piala telah terambil! Permainan selesai.`,
+          timestamp: Date.now()
+        });
+        finalizeGame(newState);
+      } else if (newState.deck.length === 0) {
+        newState.status = 'game_over';
+        newState.endReason = 'deck_empty';
+        finalizeGame(newState);
+      } else {
+        newState.status = 'challenge_revealed';
+      }
 
-    await DB.updateGameState(currentRoom.code, 'spicy', newState);
-    isSubmitting = false;
+      if (isClaimValid) {
+        UI.Sound.fanfare();
+      } else {
+        UI.Sound.pop();
+      }
+
+      await DB.updateGameState(currentRoom.code, 'spicy', newState);
+    } catch (err) {
+      UI.Logger('SPICY', 'Error in submitChallenge:', err, true);
+      UI.Toast('Gagal memproses tantangan: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -713,14 +763,18 @@ const SpicyGame = (function () {
     if (state.status !== 'challenge_revealed') return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    await DB.updateGameState(currentRoom.code, 'spicy', {
-      status: 'playing',
-      challengeResult: null
-    });
-
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'spicy', {
+        status: 'playing',
+        challengeResult: null
+      });
+    } catch (err) {
+      UI.Logger('SPICY', 'Error in dismissChallengeReveal:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**

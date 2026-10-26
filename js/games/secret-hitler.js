@@ -27,11 +27,23 @@ const SecretHitlerGame = (function () {
   let isRoleRevealed = false; // Toggle tampilan kartu peran sendiri
 
   /**
-   * Helper: Mengambil state permainan Secret Hitler dari roomData
+   * Helper: Mengambil state permainan Secret Hitler dari roomData dengan normalisasi default
    */
   function getGameState(roomData) {
     if (!roomData) return {};
-    return roomData.secretHitlerGame || roomData.gameState?.secretHitler || {};
+    const state = roomData.secretHitlerGame || roomData.gameState?.secretHitler || {};
+    if (!Array.isArray(state.deck)) state.deck = [];
+    if (!Array.isArray(state.discardPile)) state.discardPile = [];
+    if (!Array.isArray(state.legislativeCards)) state.legislativeCards = [];
+    if (!Array.isArray(state.actionLogs)) state.actionLogs = [];
+    if (!Array.isArray(state.turnOrder)) state.turnOrder = [];
+    if (!state.votes || typeof state.votes !== 'object') state.votes = {};
+    if (!state.players || typeof state.players !== 'object') state.players = {};
+    if (!state.powersConfig || typeof state.powersConfig !== 'object') {
+      const pCount = state.initialPlayerCount || (state.players ? Object.keys(state.players).length : 5) || 5;
+      state.powersConfig = getFascistBoardPowers(pCount);
+    }
+    return state;
   }
 
   /**
@@ -125,87 +137,93 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.fanfare();
+    try {
+      UI.Sound.fanfare();
 
-    const playerCount = playersList.length;
-    const dist = getRoleDistribution(playerCount);
+      const playerCount = playersList.length;
+      const dist = getRoleDistribution(playerCount);
 
-    // Susun array peran
-    const rolePool = [];
-    for (let i = 0; i < dist.liberals; i++) rolePool.push('liberal');
-    for (let i = 0; i < dist.fascists; i++) rolePool.push('fascist');
-    rolePool.push('hitler');
+      // Susun array peran
+      const rolePool = [];
+      for (let i = 0; i < dist.liberals; i++) rolePool.push('liberal');
+      for (let i = 0; i < dist.fascists; i++) rolePool.push('fascist');
+      rolePool.push('hitler');
 
-    const shuffledRoles = shuffle(rolePool);
-    const turnOrder = shuffle(playersList.map(p => p.id));
+      const shuffledRoles = shuffle(rolePool);
+      const turnOrder = shuffle(playersList.map(p => p.id));
 
-    const playersData = {};
-    turnOrder.forEach((pid, idx) => {
-      const p = currentRoom.players[pid];
-      const assignedRole = shuffledRoles[idx];
-      const assignedParty = (assignedRole === 'liberal') ? 'liberal' : 'fascist'; // Hitler memegang kartu partai Fascist!
+      const playersData = {};
+      turnOrder.forEach((pid, idx) => {
+        const p = currentRoom.players[pid];
+        const assignedRole = shuffledRoles[idx];
+        const assignedParty = (assignedRole === 'liberal') ? 'liberal' : 'fascist'; // Hitler memegang kartu partai Fascist!
 
-      playersData[pid] = {
-        id: pid,
-        name: p.name,
-        role: assignedRole,
-        party: assignedParty,
-        isAlive: true,
-        isInvestigated: false
+        playersData[pid] = {
+          id: pid,
+          name: p.name,
+          role: assignedRole,
+          party: assignedParty,
+          isAlive: true,
+          isInvestigated: false
+        };
+      });
+
+      const policyDeck = generatePolicyDeck();
+      const powersConfig = getFascistBoardPowers(playerCount);
+
+      const initialGameState = {
+        status: 'playing',
+        phase: 'nomination', // 'nomination' | 'voting' | 'vote_reveal' | 'legislative_president' | 'legislative_chancellor' | 'veto_pending' | 'executive_action' | 'game_over'
+        initialPlayerCount: playerCount,
+        powersConfig: powersConfig,
+        turnOrder: turnOrder,
+        players: playersData,
+        presidentIndex: 0,
+        presidentCandidateId: turnOrder[0],
+        chancellorCandidateId: null,
+        lastElectedPresidentId: null,
+        lastElectedChancellorId: null,
+        specialElectionReturnIndex: null, // Jika ada pemilu khusus
+        
+        // Papan & Kebijakan
+        liberalPolicies: 0,
+        fascistPolicies: 0,
+        electionTracker: 0,
+        vetoUnlocked: false,
+        vetoRequested: false,
+
+        // Dek Kebijakan
+        deck: policyDeck,
+        discardPile: [],
+        legislativeCards: [], // 3 kartu yang ditarik untuk sesi legislatif
+
+        // Pemungutan Suara
+        votes: {}, // { [playerId]: 'ja' | 'nein' }
+        lastVoteResult: null,
+
+        // Kekuatan Eksekutif
+        activeExecutivePower: null,
+        executiveDetails: null, // Hasil investigasi atau intip kebijakan
+
+        // Kondisi Menang
+        winnerTeam: null, // 'liberal' | 'fascist'
+        winReason: null,
+
+        actionLogs: [
+          {
+            text: `🗳️ Permainan Secret Hitler dimulai dengan ${playerCount} pemain! Peran rahasia telah dibagikan. Kandidat Presiden pertama: [${playersData[turnOrder[0]].name}].`,
+            timestamp: Date.now()
+          }
+        ]
       };
-    });
 
-    const policyDeck = generatePolicyDeck();
-    const powersConfig = getFascistBoardPowers(playerCount);
-
-    const initialGameState = {
-      status: 'playing',
-      phase: 'nomination', // 'nomination' | 'voting' | 'vote_reveal' | 'legislative_president' | 'legislative_chancellor' | 'veto_pending' | 'executive_action' | 'game_over'
-      initialPlayerCount: playerCount,
-      powersConfig: powersConfig,
-      turnOrder: turnOrder,
-      players: playersData,
-      presidentIndex: 0,
-      presidentCandidateId: turnOrder[0],
-      chancellorCandidateId: null,
-      lastElectedPresidentId: null,
-      lastElectedChancellorId: null,
-      specialElectionReturnIndex: null, // Jika ada pemilu khusus
-      
-      // Papan & Kebijakan
-      liberalPolicies: 0,
-      fascistPolicies: 0,
-      electionTracker: 0,
-      vetoUnlocked: false,
-      vetoRequested: false,
-
-      // Dek Kebijakan
-      deck: policyDeck,
-      discardPile: [],
-      legislativeCards: [], // 3 kartu yang ditarik untuk sesi legislatif
-
-      // Pemungutan Suara
-      votes: {}, // { [playerId]: 'ja' | 'nein' }
-      lastVoteResult: null,
-
-      // Kekuatan Eksekutif
-      activeExecutivePower: null,
-      executiveDetails: null, // Hasil investigasi atau intip kebijakan
-
-      // Kondisi Menang
-      winnerTeam: null, // 'liberal' | 'fascist'
-      winReason: null,
-
-      actionLogs: [
-        {
-          text: `🗳️ Permainan Secret Hitler dimulai dengan ${playerCount} pemain! Peran rahasia telah dibagikan. Kandidat Presiden pertama: [${playersData[turnOrder[0]].name}].`,
-          timestamp: Date.now()
-        }
-      ]
-    };
-
-    await DB.updateGameState(currentRoom.code, 'secretHitler', initialGameState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', initialGameState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error starting game:', err, true);
+      UI.Toast('Gagal memulai Secret Hitler: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -254,23 +272,30 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const candidate = state.players[candidateId];
-    const newState = JSON.parse(JSON.stringify(state));
+      const candidate = state.players[candidateId];
+      if (!candidate) return;
+      const newState = JSON.parse(JSON.stringify(state));
 
-    newState.chancellorCandidateId = candidateId;
-    newState.phase = 'voting';
-    newState.votes = {};
-    newState.lastVoteResult = null;
+      newState.chancellorCandidateId = candidateId;
+      newState.phase = 'voting';
+      newState.votes = {};
+      newState.lastVoteResult = null;
 
-    newState.actionLogs.push({
-      text: `📜 Presiden [${currentPlayer.name}] menominasikan [${candidate.name}] sebagai Kanselir! Pemungutan suara JA! / NEIN! dimulai.`,
-      timestamp: Date.now()
-    });
+      newState.actionLogs.push({
+        text: `📜 Presiden [${currentPlayer.name}] menominasikan [${candidate.name}] sebagai Kanselir! Pemungutan suara JA! / NEIN! dimulai.`,
+        timestamp: Date.now()
+      });
 
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error nominating chancellor:', err, true);
+      UI.Toast('Gagal menominasikan kanselir: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -288,23 +313,29 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.pop();
+    try {
+      UI.Sound.pop();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    newState.votes = newState.votes || {};
-    newState.votes[currentPlayer.id] = voteChoice; // 'ja' | 'nein'
+      const newState = JSON.parse(JSON.stringify(state));
+      newState.votes = newState.votes || {};
+      newState.votes[currentPlayer.id] = voteChoice; // 'ja' | 'nein'
 
-    // Cek apakah seluruh pemain hidup sudah memberikan suara
-    const livingPlayers = getLivingPlayers(newState.players);
-    const livingVotedCount = livingPlayers.filter(p => newState.votes[p.id]).length;
+      // Cek apakah seluruh pemain hidup sudah memberikan suara
+      const livingPlayers = getLivingPlayers(newState.players);
+      const livingVotedCount = livingPlayers.filter(p => newState.votes[p.id]).length;
 
-    if (livingVotedCount >= livingPlayers.length) {
-      // Seluruh suara masuk! Buka hasil pemilihan secara serentak
-      processVoteResults(newState, livingPlayers);
+      if (livingVotedCount >= livingPlayers.length) {
+        // Seluruh suara masuk! Buka hasil pemilihan secara serentak
+        processVoteResults(newState, livingPlayers);
+      }
+
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error casting vote:', err, true);
+      UI.Toast('Gagal memberikan suara: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
   }
 
   /**
@@ -415,31 +446,36 @@ const SecretHitlerGame = (function () {
     if (state.phase !== 'vote_reveal') return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    const voteResult = newState.lastVoteResult;
+      const newState = JSON.parse(JSON.stringify(state));
+      const voteResult = newState.lastVoteResult;
 
-    if (voteResult && voteResult.isPassed) {
-      // Masuk ke Sesi Legislatif Presiden
-      newState.electionTracker = 0;
-      newState.phase = 'legislative_president';
-      ensurePolicyDeck(newState);
-      // Ambil 3 kartu teratas
-      newState.legislativeCards = newState.deck.splice(0, 3);
-      newState.actionLogs.push({
-        text: `🏛️ Sesi Legislatif: Presiden [${newState.players[newState.presidentCandidateId].name}] mengambil 3 kartu kebijakan rahasia...`,
-        timestamp: Date.now()
-      });
-    } else {
-      // Pemilihan gagal: Pindahkan giliran Presiden ke pemain berikutnya
-      advancePresidentTurn(newState);
-      newState.phase = 'nomination';
-      newState.chancellorCandidateId = null;
+      if (voteResult && voteResult.isPassed) {
+        // Masuk ke Sesi Legislatif Presiden
+        newState.electionTracker = 0;
+        newState.phase = 'legislative_president';
+        ensurePolicyDeck(newState);
+        // Ambil 3 kartu teratas
+        newState.legislativeCards = newState.deck.splice(0, 3);
+        newState.actionLogs.push({
+          text: `🏛️ Sesi Legislatif: Presiden [${newState.players[newState.presidentCandidateId].name}] mengambil 3 kartu kebijakan rahasia...`,
+          timestamp: Date.now()
+        });
+      } else {
+        // Pemilihan gagal: Pindahkan giliran Presiden ke pemain berikutnya
+        advancePresidentTurn(newState);
+        newState.phase = 'nomination';
+        newState.chancellorCandidateId = null;
+      }
+
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error proceeding after vote reveal:', err, true);
+    } finally {
+      isSubmitting = false;
     }
-
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
   }
 
   /**
@@ -474,20 +510,28 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.pop();
+    try {
+      UI.Sound.pop();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    const discardedCard = newState.legislativeCards.splice(cardIndex, 1)[0];
-    newState.discardPile.push(discardedCard);
+      const newState = JSON.parse(JSON.stringify(state));
+      if (!Array.isArray(newState.legislativeCards)) newState.legislativeCards = [];
+      const discardedCard = newState.legislativeCards.splice(cardIndex, 1)[0];
+      if (!Array.isArray(newState.discardPile)) newState.discardPile = [];
+      newState.discardPile.push(discardedCard);
 
-    newState.phase = 'legislative_chancellor';
-    newState.actionLogs.push({
-      text: `📜 Presiden telah membuang 1 kartu secara tertutup dan meneruskan 2 kartu kebijakan ke Kanselir [${newState.players[newState.chancellorCandidateId].name}].`,
-      timestamp: Date.now()
-    });
+      newState.phase = 'legislative_chancellor';
+      newState.actionLogs.push({
+        text: `📜 Presiden telah membuang 1 kartu secara tertutup dan meneruskan 2 kartu kebijakan ke Kanselir [${newState.players[newState.chancellorCandidateId].name}].`,
+        timestamp: Date.now()
+      });
 
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error discarding policy:', err, true);
+      UI.Toast('Gagal membuang kebijakan: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -504,79 +548,84 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.fanfare();
+    try {
+      UI.Sound.fanfare();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    const enactedCard = newState.legislativeCards.splice(cardIndex, 1)[0];
-    const discardedCard = newState.legislativeCards.splice(0, 1)[0];
-    newState.discardPile.push(discardedCard);
+      const newState = JSON.parse(JSON.stringify(state));
+      if (!Array.isArray(newState.legislativeCards)) newState.legislativeCards = [];
+      const enactedCard = newState.legislativeCards.splice(cardIndex, 1)[0];
+      const discardedCard = newState.legislativeCards.splice(0, 1)[0];
+      if (!Array.isArray(newState.discardPile)) newState.discardPile = [];
+      newState.discardPile.push(discardedCard);
 
-    // Sahkan kebijakan
-    const isLiberal = (enactedCard.type === 'liberal');
-    if (isLiberal) {
-      newState.liberalPolicies += 1;
-    } else {
-      newState.fascistPolicies += 1;
-    }
+      // Sahkan kebijakan
+      const isLiberal = (enactedCard.type === 'liberal');
+      if (isLiberal) {
+        newState.liberalPolicies = (newState.liberalPolicies || 0) + 1;
+      } else {
+        newState.fascistPolicies = (newState.fascistPolicies || 0) + 1;
+      }
 
-    // Perbarui Term Limits
-    newState.lastElectedPresidentId = newState.presidentCandidateId;
-    newState.lastElectedChancellorId = newState.chancellorCandidateId;
+      // Perbarui Term Limits
+      newState.lastElectedPresidentId = newState.presidentCandidateId;
+      newState.lastElectedChancellorId = newState.chancellorCandidateId;
 
-    newState.actionLogs.push({
-      text: `⚖️ KANSELIR TELAH MENGESAHKAN: [${enactedCard.type.toUpperCase()}]! (Skor: ${newState.liberalPolicies} Liberal vs ${newState.fascistPolicies} Fascist).`,
-      timestamp: Date.now()
-    });
+      newState.actionLogs.push({
+        text: `⚖️ KANSELIR TELAH MENGESAHKAN: [${enactedCard.type.toUpperCase()}]! (Skor: ${newState.liberalPolicies} Liberal vs ${newState.fascistPolicies} Fascist).`,
+        timestamp: Date.now()
+      });
 
-    // Cek Kemenangan Game
-    if (newState.liberalPolicies >= 5) {
-      newState.phase = 'game_over';
-      newState.status = 'game_over';
-      newState.winnerTeam = 'liberal';
-      newState.winReason = '5 Kebijakan Liberal berhasil disahkan di Parlemen!';
-      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-      isSubmitting = false;
-      return;
-    }
-
-    if (newState.fascistPolicies >= 6) {
-      newState.phase = 'game_over';
-      newState.status = 'game_over';
-      newState.winnerTeam = 'fascist';
-      newState.winReason = '6 Kebijakan Fasis berhasil disahkan di Parlemen!';
-      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-      isSubmitting = false;
-      return;
-    }
-
-    // Aktifkan Hak Veto jika Fascist Policies sudah mencapai 5
-    if (newState.fascistPolicies >= 5) {
-      newState.vetoUnlocked = true;
-    }
-
-    // Cek Kekuatan Eksekutif jika kebijakan yang disahkan adalah FASCIST
-    if (!isLiberal) {
-      const power = newState.powersConfig[newState.fascistPolicies];
-      if (power) {
-        newState.phase = 'executive_action';
-        newState.activeExecutivePower = power;
-        newState.actionLogs.push({
-          text: `⚡ Kekuatan Eksekutif Terbuka untuk Presiden: [${getPowerName(power)}]!`,
-          timestamp: Date.now()
-        });
+      // Cek Kemenangan Game
+      if (newState.liberalPolicies >= 5) {
+        newState.phase = 'game_over';
+        newState.status = 'game_over';
+        newState.winnerTeam = 'liberal';
+        newState.winReason = '5 Kebijakan Liberal berhasil disahkan di Parlemen!';
         await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-        isSubmitting = false;
         return;
       }
+
+      if (newState.fascistPolicies >= 6) {
+        newState.phase = 'game_over';
+        newState.status = 'game_over';
+        newState.winnerTeam = 'fascist';
+        newState.winReason = '6 Kebijakan Fasis berhasil disahkan di Parlemen!';
+        await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+        return;
+      }
+
+      // Aktifkan Hak Veto jika Fascist Policies sudah mencapai 5
+      if (newState.fascistPolicies >= 5) {
+        newState.vetoUnlocked = true;
+      }
+
+      // Cek Kekuatan Eksekutif jika kebijakan yang disahkan adalah FASCIST
+      if (!isLiberal) {
+        const power = (newState.powersConfig || {})[newState.fascistPolicies];
+        if (power) {
+          newState.phase = 'executive_action';
+          newState.activeExecutivePower = power;
+          newState.actionLogs.push({
+            text: `⚡ Kekuatan Eksekutif Terbuka untuk Presiden: [${getPowerName(power)}]!`,
+            timestamp: Date.now()
+          });
+          await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+          return;
+        }
+      }
+
+      // Jika tidak ada kekuatan eksekutif, majukan giliran Presiden
+      advancePresidentTurn(newState);
+      newState.phase = 'nomination';
+      newState.chancellorCandidateId = null;
+
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error enacting policy:', err, true);
+      UI.Toast('Gagal mengesahkan kebijakan: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    // Jika tidak ada kekuatan eksekutif, majukan giliran Presiden
-    advancePresidentTurn(newState);
-    newState.phase = 'nomination';
-    newState.chancellorCandidateId = null;
-
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
   }
 
   /**
@@ -590,17 +639,23 @@ const SecretHitlerGame = (function () {
     if (state.chancellorCandidateId !== currentPlayer.id) return;
 
     isSubmitting = true;
-    UI.Sound.pop();
+    try {
+      UI.Sound.pop();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    newState.phase = 'veto_pending';
-    newState.actionLogs.push({
-      text: `🛑 Kanselir [${currentPlayer.name}] MENGAJUKAN HAK VETO untuk membuang kedua kebijakan! Menunggu persetujuan Presiden...`,
-      timestamp: Date.now()
-    });
+      const newState = JSON.parse(JSON.stringify(state));
+      newState.phase = 'veto_pending';
+      newState.actionLogs.push({
+        text: `🛑 Kanselir [${currentPlayer.name}] MENGAJUKAN HAK VETO untuk membuang kedua kebijakan! Menunggu persetujuan Presiden...`,
+        timestamp: Date.now()
+      });
 
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error requesting veto:', err, true);
+      UI.Toast('Gagal mengajukan veto: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -614,38 +669,47 @@ const SecretHitlerGame = (function () {
     if (state.presidentCandidateId !== currentPlayer.id) return;
 
     isSubmitting = true;
-    const newState = JSON.parse(JSON.stringify(state));
+    try {
+      const newState = JSON.parse(JSON.stringify(state));
 
-    if (accept) {
-      UI.Sound.fanfare();
-      // Buang kedua kartu ke discard pile
-      newState.discardPile.push(...newState.legislativeCards);
-      newState.legislativeCards = [];
-      newState.electionTracker += 1;
+      if (accept) {
+        UI.Sound.fanfare();
+        // Buang kedua kartu ke discard pile
+        if (!Array.isArray(newState.discardPile)) newState.discardPile = [];
+        if (Array.isArray(newState.legislativeCards)) {
+          newState.discardPile.push(...newState.legislativeCards);
+        }
+        newState.legislativeCards = [];
+        newState.electionTracker = (newState.electionTracker || 0) + 1;
 
-      newState.actionLogs.push({
-        text: `🛑 Presiden MENYETUJUI HAK VETO! Kedua kebijakan dibuang tanpa disahkan. Election Tracker naik menjadi [${newState.electionTracker}/3].`,
-        timestamp: Date.now()
-      });
+        newState.actionLogs.push({
+          text: `🛑 Presiden MENYETUJUI HAK VETO! Kedua kebijakan dibuang tanpa disahkan. Election Tracker naik menjadi [${newState.electionTracker}/3].`,
+          timestamp: Date.now()
+        });
 
-      if (newState.electionTracker >= 3) {
-        triggerChaosEnactment(newState);
+        if (newState.electionTracker >= 3) {
+          triggerChaosEnactment(newState);
+        }
+
+        advancePresidentTurn(newState);
+        newState.phase = 'nomination';
+        newState.chancellorCandidateId = null;
+      } else {
+        UI.Sound.pop();
+        newState.phase = 'legislative_chancellor';
+        newState.actionLogs.push({
+          text: `❌ Presiden MENOLAK HAK VETO! Kanselir wajib mensahkan 1 dari 2 kartu kebijakan.`,
+          timestamp: Date.now()
+        });
       }
 
-      advancePresidentTurn(newState);
-      newState.phase = 'nomination';
-      newState.chancellorCandidateId = null;
-    } else {
-      UI.Sound.pop();
-      newState.phase = 'legislative_chancellor';
-      newState.actionLogs.push({
-        text: `❌ Presiden MENOLAK HAK VETO! Kanselir wajib mensahkan 1 dari 2 kartu kebijakan.`,
-        timestamp: Date.now()
-      });
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error responding to veto:', err, true);
+      UI.Toast('Gagal merespons veto: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
   }
 
   /**
@@ -658,21 +722,26 @@ const SecretHitlerGame = (function () {
     if (state.phase !== 'executive_action' || state.activeExecutivePower !== 'policy_peek') return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    newState.activeExecutivePower = null;
-    advancePresidentTurn(newState);
-    newState.phase = 'nomination';
-    newState.chancellorCandidateId = null;
+      const newState = JSON.parse(JSON.stringify(state));
+      newState.activeExecutivePower = null;
+      advancePresidentTurn(newState);
+      newState.phase = 'nomination';
+      newState.chancellorCandidateId = null;
 
-    newState.actionLogs.push({
-      text: `👁️ Presiden telah selesai mengintip 3 kartu teratas dek kebijakan rahasia.`,
-      timestamp: Date.now()
-    });
+      newState.actionLogs.push({
+        text: `👁️ Presiden telah selesai mengintip 3 kartu teratas dek kebijakan rahasia.`,
+        timestamp: Date.now()
+      });
 
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error completing policy peek:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   // B. Investigate Loyalty: Periksa kartu keanggotaan partai
@@ -690,23 +759,29 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    newState.players[targetId].isInvestigated = true;
-    newState.executiveDetails = {
-      targetId: targetId,
-      targetName: target.name,
-      party: target.party // 'liberal' atau 'fascist'
-    };
+      const newState = JSON.parse(JSON.stringify(state));
+      newState.players[targetId].isInvestigated = true;
+      newState.executiveDetails = {
+        targetId: targetId,
+        targetName: target.name,
+        party: target.party // 'liberal' atau 'fascist'
+      };
 
-    newState.actionLogs.push({
-      text: `🔍 Presiden telah memeriksa Kartu Keanggotaan Partai milik [${target.name}].`,
-      timestamp: Date.now()
-    });
+      newState.actionLogs.push({
+        text: `🔍 Presiden telah memeriksa Kartu Keanggotaan Partai milik [${target.name}].`,
+        timestamp: Date.now()
+      });
 
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error investigating player:', err, true);
+      UI.Toast('Gagal menyelidiki pemain: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   // Selesai melihat hasil investigasi
@@ -716,17 +791,22 @@ const SecretHitlerGame = (function () {
     if (!state.executiveDetails) return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    newState.executiveDetails = null;
-    newState.activeExecutivePower = null;
-    advancePresidentTurn(newState);
-    newState.phase = 'nomination';
-    newState.chancellorCandidateId = null;
+      const newState = JSON.parse(JSON.stringify(state));
+      newState.executiveDetails = null;
+      newState.activeExecutivePower = null;
+      advancePresidentTurn(newState);
+      newState.phase = 'nomination';
+      newState.chancellorCandidateId = null;
 
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error dismissing investigation:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   // C. Special Election: Presiden menunjuk calon Presiden berikutnya
@@ -744,25 +824,31 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.fanfare();
+    try {
+      UI.Sound.fanfare();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    const nextNormalIndex = (newState.presidentIndex + 1) % newState.turnOrder.length;
-    newState.specialElectionReturnIndex = nextNormalIndex;
+      const newState = JSON.parse(JSON.stringify(state));
+      const nextNormalIndex = (newState.presidentIndex + 1) % newState.turnOrder.length;
+      newState.specialElectionReturnIndex = nextNormalIndex;
 
-    newState.presidentIndex = newState.turnOrder.indexOf(targetId);
-    newState.presidentCandidateId = targetId;
-    newState.chancellorCandidateId = null;
-    newState.phase = 'nomination';
-    newState.activeExecutivePower = null;
+      newState.presidentIndex = newState.turnOrder.indexOf(targetId);
+      newState.presidentCandidateId = targetId;
+      newState.chancellorCandidateId = null;
+      newState.phase = 'nomination';
+      newState.activeExecutivePower = null;
 
-    newState.actionLogs.push({
-      text: `💼 PEMILU KHUSUS: Presiden menunjuk [${target.name}] menjadi Kandidat Presiden berikutnya!`,
-      timestamp: Date.now()
-    });
+      newState.actionLogs.push({
+        text: `💼 PEMILU KHUSUS: Presiden menunjuk [${target.name}] menjadi Kandidat Presiden berikutnya!`,
+        timestamp: Date.now()
+      });
 
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error calling special election:', err, true);
+      UI.Toast('Gagal mengadakan pemilu khusus: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   // D. Execution: Presiden mengeksekusi mati 1 pemain
@@ -781,44 +867,49 @@ const SecretHitlerGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.fanfare();
+    try {
+      UI.Sound.fanfare();
 
-    const newState = JSON.parse(JSON.stringify(state));
-    newState.players[targetId].isAlive = false;
+      const newState = JSON.parse(JSON.stringify(state));
+      newState.players[targetId].isAlive = false;
 
-    newState.actionLogs.push({
-      text: `💀 EKSEKUSI MATI! Presiden telah mengeksekusi mati [${target.name}]!`,
-      timestamp: Date.now()
-    });
-
-    // CEK KEMENANGAN LIBERAL:
-    // Jika pemain yang dieksekusi adalah Secret Hitler -> Liberal Menang Seketika!
-    if (target.role === 'hitler') {
-      newState.phase = 'game_over';
-      newState.status = 'game_over';
-      newState.winnerTeam = 'liberal';
-      newState.winReason = `Secret Hitler ([${target.name}]) berhasil dieksekusi mati oleh Presiden! Kemenangan Kaum Liberal!`;
       newState.actionLogs.push({
-        text: `🕊️ KEMENANGAN LIBERAL: ${newState.winReason}`,
+        text: `💀 EKSEKUSI MATI! Presiden telah mengeksekusi mati [${target.name}]!`,
         timestamp: Date.now()
       });
+
+      // CEK KEMENANGAN LIBERAL:
+      // Jika pemain yang dieksekusi adalah Secret Hitler -> Liberal Menang Seketika!
+      if (target.role === 'hitler') {
+        newState.phase = 'game_over';
+        newState.status = 'game_over';
+        newState.winnerTeam = 'liberal';
+        newState.winReason = `Secret Hitler ([${target.name}]) berhasil dieksekusi mati oleh Presiden! Kemenangan Kaum Liberal!`;
+        newState.actionLogs.push({
+          text: `🕊️ KEMENANGAN LIBERAL: ${newState.winReason}`,
+          timestamp: Date.now()
+        });
+        await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+        return;
+      }
+
+      newState.actionLogs.push({
+        text: `🕊️ [${target.name}] BUKAN Secret Hitler! Permainan tetap berlanjut.`,
+        timestamp: Date.now()
+      });
+
+      newState.activeExecutivePower = null;
+      advancePresidentTurn(newState);
+      newState.phase = 'nomination';
+      newState.chancellorCandidateId = null;
+
       await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
+    } catch (err) {
+      UI.Logger('SECRET-HITLER', 'Error executing player:', err, true);
+      UI.Toast('Gagal mengeksekusi pemain: ' + (err.message || err), 'error');
+    } finally {
       isSubmitting = false;
-      return;
     }
-
-    newState.actionLogs.push({
-      text: `🕊️ [${target.name}] BUKAN Secret Hitler! Permainan tetap berlanjut.`,
-      timestamp: Date.now()
-    });
-
-    newState.activeExecutivePower = null;
-    advancePresidentTurn(newState);
-    newState.phase = 'nomination';
-    newState.chancellorCandidateId = null;
-
-    await DB.updateGameState(currentRoom.code, 'secretHitler', newState);
-    isSubmitting = false;
   }
 
   /**
@@ -1025,7 +1116,7 @@ const SecretHitlerGame = (function () {
     const fascistSlotsHTML = Array.from({ length: 6 }).map((_, idx) => {
       const slotNum = idx + 1;
       const isEnacted = slotNum <= state.fascistPolicies;
-      const power = state.powersConfig[slotNum];
+      const power = (state.powersConfig || {})[slotNum];
       const isHitlerDanger = slotNum >= 3; // Zona Bahaya Hitler Territory
 
       let powerIcon = '';

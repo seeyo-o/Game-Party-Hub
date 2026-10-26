@@ -82,11 +82,22 @@ const CoupGame = (function () {
   };
 
   /**
-   * Helper: Get current Coup Game state from room data
+   * Helper: Get current Coup Game state from room data with defensive normalization
    */
   function getGameState(roomData) {
     if (!roomData) return {};
-    return roomData.coupGame || roomData.gameState?.coup || {};
+    const state = roomData.coupGame || roomData.gameState?.coup || {};
+    if (!Array.isArray(state.deck)) state.deck = [];
+    if (!Array.isArray(state.actionLogs)) state.actionLogs = [];
+    if (!Array.isArray(state.turnOrder)) state.turnOrder = [];
+    if (!state.players || typeof state.players !== 'object') state.players = {};
+    Object.values(state.players).forEach(p => {
+      if (p) {
+        if (!Array.isArray(p.cards)) p.cards = [];
+        if (typeof p.coins !== 'number') p.coins = 0;
+      }
+    });
+    return state;
   }
 
   /**
@@ -921,53 +932,61 @@ const CoupGame = (function () {
    * 1. Start Coup Game (Host Only)
    */
   async function startGame() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
 
-    const playerList = Object.values(currentRoom.players || {});
-    if (playerList.length < 2) {
-      UI.Toast('Minimal 2 pemain untuk memulai Coup!', 'warning');
-      return;
+      const playerList = Object.values(currentRoom.players || {});
+      if (playerList.length < 2) {
+        UI.Toast('Minimal 2 pemain untuk memulai Coup!', 'warning');
+        return;
+      }
+
+      const deck = createDeck();
+      const playersMap = {};
+
+      playerList.forEach((p, idx) => {
+        const card1 = deck.pop();
+        const card2 = deck.pop();
+        playersMap[p.id] = {
+          id: p.id,
+          name: p.name,
+          coins: 2, // Standard starting coins
+          cards: [card1, card2],
+          isAlive: true,
+          colorIndex: p.colorIndex || idx
+        };
+      });
+
+      const turnOrder = playerList.map(p => p.id).sort(() => 0.5 - Math.random());
+
+      await DB.updateGameState(currentRoom.code, 'coup', {
+        status: 'action_turn',
+        deck: deck,
+        players: playersMap,
+        turnOrder: turnOrder,
+        turnIndex: 0,
+        currentTurnPlayerId: turnOrder[0],
+        currentAction: null,
+        actionReactions: {},
+        currentBlock: null,
+        blockReactions: {},
+        pendingCardLoss: null,
+        pendingExchange: null,
+        actionLogs: [
+          { text: `Permainan dimulai! ${playerList.length} bangsawan siap bertarung.`, timestamp: Date.now() }
+        ],
+        winnerId: null
+      });
+
+      UI.Toast('Kudeta dimulai! Setiap pemain menerima 2 koin dan 2 kartu rahasia.', 'success');
+    } catch (err) {
+      UI.Logger('COUP', 'Error starting game:', err, true);
+      UI.Toast('Gagal memulai Coup: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    const deck = createDeck();
-    const playersMap = {};
-
-    playerList.forEach((p, idx) => {
-      const card1 = deck.pop();
-      const card2 = deck.pop();
-      playersMap[p.id] = {
-        id: p.id,
-        name: p.name,
-        coins: 2, // Standard starting coins
-        cards: [card1, card2],
-        isAlive: true,
-        colorIndex: p.colorIndex || idx
-      };
-    });
-
-    const turnOrder = playerList.map(p => p.id).sort(() => 0.5 - Math.random());
-
-    await DB.updateGameState(currentRoom.code, 'coup', {
-      status: 'action_turn',
-      deck: deck,
-      players: playersMap,
-      turnOrder: turnOrder,
-      turnIndex: 0,
-      currentTurnPlayerId: turnOrder[0],
-      currentAction: null,
-      actionReactions: {},
-      currentBlock: null,
-      blockReactions: {},
-      pendingCardLoss: null,
-      pendingExchange: null,
-      actionLogs: [
-        { text: `Permainan dimulai! ${playerList.length} bangsawan siap bertarung.`, timestamp: Date.now() }
-      ],
-      winnerId: null
-    });
-
-    UI.Toast('Kudeta dimulai! Setiap pemain menerima 2 koin dan 2 kartu rahasia.', 'success');
   }
 
   function selectTargetPlayer(targetId) {
@@ -1020,87 +1039,91 @@ const CoupGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const targetName = state.players[selectedTargetPlayerId]?.name;
-    const actionLogs = [...(state.actionLogs || [])];
+      const targetName = state.players[selectedTargetPlayerId]?.name;
+      const actionLogs = [...(state.actionLogs || [])];
 
-    // Case 1: Income (Instant, no challenge, no block)
-    if (actionType === 'income') {
+      // Case 1: Income (Instant, no challenge, no block)
+      if (actionType === 'income') {
+        const players = { ...state.players };
+        players[currentPlayer.id].coins += 1;
+        actionLogs.push({ text: `[${currentPlayer.name}] mengambil Income (+1 Koin).`, timestamp: Date.now() });
+
+        const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, players);
+        await DB.updateGameState(currentRoom.code, 'coup', {
+          players,
+          actionLogs,
+          status: 'action_turn',
+          currentTurnPlayerId: nextTurnData.playerId,
+          turnIndex: nextTurnData.index,
+          currentAction: null
+        });
+        return;
+      }
+
+      // Case 2: Coup (Instant, costs 7 coins, target must lose card)
+      if (actionType === 'coup') {
+        const players = { ...state.players };
+        players[currentPlayer.id].coins -= 7;
+        actionLogs.push({ text: `[${currentPlayer.name}] meluncurkan Kudeta (COUP) kepada [${targetName}]!`, timestamp: Date.now() });
+
+        await DB.updateGameState(currentRoom.code, 'coup', {
+          players,
+          actionLogs,
+          status: 'card_reveal_choice',
+          pendingCardLoss: {
+            targetPlayerId: selectedTargetPlayerId,
+            reason: 'coup',
+            nextStep: 'advance_turn'
+          },
+          currentAction: null
+        });
+        selectedTargetPlayerId = null;
+        return;
+      }
+
+      // Case 3: Action that requires reaction (Tax, Foreign Aid, Assassinate, Steal, Exchange)
+      let claimedRole = null;
+      let cost = 0;
+      if (actionType === 'tax') claimedRole = 'duke';
+      if (actionType === 'assassinate') { claimedRole = 'assassin'; cost = 3; }
+      if (actionType === 'steal') claimedRole = 'captain';
+      if (actionType === 'exchange') claimedRole = 'ambassador';
+
+      // Deduct cost immediately if assassinate
       const players = { ...state.players };
-      players[currentPlayer.id].coins += 1;
-      actionLogs.push({ text: `[${currentPlayer.name}] mengambil Income (+1 Koin).`, timestamp: Date.now() });
+      if (cost > 0) {
+        players[currentPlayer.id].coins -= cost;
+      }
 
-      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, players);
-      await DB.updateGameState(currentRoom.code, 'coup', {
-        players,
-        actionLogs,
-        status: 'action_turn',
-        currentTurnPlayerId: nextTurnData.playerId,
-        turnIndex: nextTurnData.index,
-        currentAction: null
+      actionLogs.push({
+        text: `[${currentPlayer.name}] melakukan ${actionType.toUpperCase()}${targetName ? ` kepada [${targetName}]` : ''}${claimedRole ? ` (mengklaim ${ROLES_DEF[claimedRole]?.name})` : ''}.`,
+        timestamp: Date.now()
       });
-      isSubmitting = false;
-      return;
-    }
-
-    // Case 2: Coup (Instant, costs 7 coins, target must lose card)
-    if (actionType === 'coup') {
-      const players = { ...state.players };
-      players[currentPlayer.id].coins -= 7;
-      actionLogs.push({ text: `[${currentPlayer.name}] meluncurkan Kudeta (COUP) kepada [${targetName}]!`, timestamp: Date.now() });
 
       await DB.updateGameState(currentRoom.code, 'coup', {
         players,
         actionLogs,
-        status: 'card_reveal_choice',
-        pendingCardLoss: {
-          targetPlayerId: selectedTargetPlayerId,
-          reason: 'coup',
-          nextStep: 'advance_turn'
+        status: 'action_reaction',
+        currentAction: {
+          type: actionType,
+          actorId: currentPlayer.id,
+          targetId: selectedTargetPlayerId || null,
+          claimedRole: claimedRole,
+          cost: cost
         },
-        currentAction: null
+        actionReactions: {}
       });
+
       selectedTargetPlayerId = null;
+    } catch (err) {
+      UI.Logger('COUP', 'Error executing action:', err, true);
+      UI.Toast('Gagal menjalankan aksi: ' + (err.message || err), 'error');
+    } finally {
       isSubmitting = false;
-      return;
     }
-
-    // Case 3: Action that requires reaction (Tax, Foreign Aid, Assassinate, Steal, Exchange)
-    let claimedRole = null;
-    let cost = 0;
-    if (actionType === 'tax') claimedRole = 'duke';
-    if (actionType === 'assassinate') { claimedRole = 'assassin'; cost = 3; }
-    if (actionType === 'steal') claimedRole = 'captain';
-    if (actionType === 'exchange') claimedRole = 'ambassador';
-
-    // Deduct cost immediately if assassinate
-    const players = { ...state.players };
-    if (cost > 0) {
-      players[currentPlayer.id].coins -= cost;
-    }
-
-    actionLogs.push({
-      text: `[${currentPlayer.name}] melakukan ${actionType.toUpperCase()}${targetName ? ` kepada [${targetName}]` : ''}${claimedRole ? ` (mengklaim ${ROLES_DEF[claimedRole]?.name})` : ''}.`,
-      timestamp: Date.now()
-    });
-
-    await DB.updateGameState(currentRoom.code, 'coup', {
-      players,
-      actionLogs,
-      status: 'action_reaction',
-      currentAction: {
-        type: actionType,
-        actorId: currentPlayer.id,
-        targetId: selectedTargetPlayerId || null,
-        claimedRole: claimedRole,
-        cost: cost
-      },
-      actionReactions: {}
-    });
-
-    selectedTargetPlayerId = null;
-    isSubmitting = false;
   }
 
   /**
@@ -1112,106 +1135,113 @@ const CoupGame = (function () {
     if (state.status !== 'action_reaction') return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const pending = state.currentAction;
-    const actionLogs = [...(state.actionLogs || [])];
-    const actorId = pending.actorId;
-    const actor = state.players[actorId];
+      const pending = state.currentAction;
+      if (!pending) return;
 
-    // Reaction 1: CHALLENGE the Actor's claimed role!
-    if (reactionType === 'challenge') {
-      UI.Sound.gong();
-      const claimedRole = pending.claimedRole;
-      const actorLivingCards = (actor.cards || []).filter(c => c.isAlive);
-      const actorHasRole = actorLivingCards.some(c => c.role === claimedRole);
+      const actionLogs = [...(state.actionLogs || [])];
+      const actorId = pending.actorId;
+      const actor = state.players[actorId];
+      if (!actor) return;
 
-      if (actorHasRole) {
-        // Actor was truthful! Challenger loses challenge
-        actionLogs.push({
-          text: `🚨 [${currentPlayer.name}] menantang klaim ${ROLES_DEF[claimedRole]?.name} [${actor.name}]... dan [${actor.name}] JUJUR MEMILIKINYA! [${currentPlayer.name}] kalah tantangan.`,
-          timestamp: Date.now()
-        });
+      // Reaction 1: CHALLENGE the Actor's claimed role!
+      if (reactionType === 'challenge') {
+        UI.Sound.gong();
+        const claimedRole = pending.claimedRole;
+        const actorLivingCards = (actor.cards || []).filter(c => c.isAlive);
+        const actorHasRole = actorLivingCards.some(c => c.role === claimedRole);
 
-        // Replace actor's proven card with a fresh card from deck
-        const deck = [...(state.deck || [])];
-        const players = { ...state.players };
-        const cardIndex = players[actorId].cards.findIndex(c => c.isAlive && c.role === claimedRole);
-        if (cardIndex !== -1 && deck.length > 0) {
-          const provenCard = players[actorId].cards[cardIndex];
-          const newCard = deck.pop();
-          deck.push(provenCard);
-          deck.sort(() => 0.5 - Math.random());
-          players[actorId].cards[cardIndex] = newCard;
+        if (actorHasRole) {
+          // Actor was truthful! Challenger loses challenge
+          actionLogs.push({
+            text: `🚨 [${currentPlayer.name}] menantang klaim ${ROLES_DEF[claimedRole]?.name} [${actor.name}]... dan [${actor.name}] JUJUR MEMILIKINYA! [${currentPlayer.name}] kalah tantangan.`,
+            timestamp: Date.now()
+          });
+
+          // Replace actor's proven card with a fresh card from deck
+          const deck = [...(state.deck || [])];
+          const players = { ...state.players };
+          const cardIndex = (players[actorId]?.cards || []).findIndex(c => c.isAlive && c.role === claimedRole);
+          if (cardIndex !== -1 && deck.length > 0) {
+            const provenCard = players[actorId].cards[cardIndex];
+            const newCard = deck.pop();
+            deck.push(provenCard);
+            deck.sort(() => 0.5 - Math.random());
+            players[actorId].cards[cardIndex] = newCard;
+          }
+
+          // Challenger must lose 1 card!
+          await DB.updateGameState(currentRoom.code, 'coup', {
+            deck,
+            players,
+            actionLogs,
+            status: 'card_reveal_choice',
+            pendingCardLoss: {
+              targetPlayerId: currentPlayer.id,
+              reason: 'failed_challenge',
+              nextStep: 'continue_action' // action continues after challenger reveals card
+            }
+          });
+        } else {
+          // Actor was BLUFFING! Actor loses 1 card, action cancelled!
+          actionLogs.push({
+            text: `💥 [${currentPlayer.name}] menantang [${actor.name}]... dan KETAHUAN BOHONG! [${actor.name}] harus mengorbankan 1 kartu dan aksinya batal!`,
+            timestamp: Date.now()
+          });
+
+          await DB.updateGameState(currentRoom.code, 'coup', {
+            actionLogs,
+            status: 'card_reveal_choice',
+            pendingCardLoss: {
+              targetPlayerId: actorId,
+              reason: 'bluff_caught',
+              nextStep: 'advance_turn'
+            }
+          });
         }
+        return;
+      }
 
-        // Challenger must lose 1 card!
-        await DB.updateGameState(currentRoom.code, 'coup', {
-          deck,
-          players,
-          actionLogs,
-          status: 'card_reveal_choice',
-          pendingCardLoss: {
-            targetPlayerId: currentPlayer.id,
-            reason: 'failed_challenge',
-            nextStep: 'continue_action' // action continues after challenger reveals card
-          }
-        });
-      } else {
-        // Actor was BLUFFING! Actor loses 1 card, action cancelled!
+      // Reaction 2: BLOCK declared
+      if (reactionType === 'block') {
         actionLogs.push({
-          text: `💥 [${currentPlayer.name}] menantang [${actor.name}]... dan KETAHUAN BOHONG! [${actor.name}] harus mengorbankan 1 kartu dan aksinya batal!`,
+          text: `🛡️ [${currentPlayer.name}] memblokir aksi dengan mengklaim kartu ${ROLES_DEF[claimedBlockRole]?.name || claimedBlockRole}!`,
           timestamp: Date.now()
         });
 
         await DB.updateGameState(currentRoom.code, 'coup', {
           actionLogs,
-          status: 'card_reveal_choice',
-          pendingCardLoss: {
-            targetPlayerId: actorId,
-            reason: 'bluff_caught',
-            nextStep: 'advance_turn'
-          }
+          status: 'block_reaction',
+          currentBlock: {
+            blockerId: currentPlayer.id,
+            claimedRole: claimedBlockRole
+          },
+          blockReactions: {}
         });
+        return;
       }
-      isSubmitting = false;
-      return;
-    }
 
-    // Reaction 2: BLOCK declared
-    if (reactionType === 'block') {
-      actionLogs.push({
-        text: `🛡️ [${currentPlayer.name}] memblokir aksi dengan mengklaim kartu ${ROLES_DEF[claimedBlockRole]?.name || claimedBlockRole}!`,
-        timestamp: Date.now()
-      });
+      // Reaction 3: PASS
+      if (reactionType === 'pass') {
+        const reactions = { ...(state.actionReactions || {}) };
+        reactions[currentPlayer.id] = 'pass';
 
-      await DB.updateGameState(currentRoom.code, 'coup', {
-        actionLogs,
-        status: 'block_reaction',
-        currentBlock: {
-          blockerId: currentPlayer.id,
-          claimedRole: claimedBlockRole
-        },
-        blockReactions: {}
-      });
-      isSubmitting = false;
-      return;
-    }
+        const livingOthers = Object.values(state.players || {}).filter(p => p.isAlive && p.id !== actorId);
+        const allPassed = livingOthers.every(p => reactions[p.id] === 'pass');
 
-    // Reaction 3: PASS
-    if (reactionType === 'pass') {
-      const reactions = { ...(state.actionReactions || {}) };
-      reactions[currentPlayer.id] = 'pass';
-
-      const livingOthers = Object.values(state.players).filter(p => p.isAlive && p.id !== actorId);
-      const allPassed = livingOthers.every(p => reactions[p.id] === 'pass');
-
-      if (allPassed) {
-        // Execute the action!
-        await resolveSuccessfulAction(state, pending);
-      } else {
-        await DB.updateGameState(currentRoom.code, 'coup', { actionReactions: reactions });
+        if (allPassed) {
+          // Execute the action!
+          await resolveSuccessfulAction(state, pending);
+        } else {
+          await DB.updateGameState(currentRoom.code, 'coup', { actionReactions: reactions });
+        }
       }
+    } catch (err) {
+      UI.Logger('COUP', 'Error reacting to action:', err, true);
+      UI.Toast('Gagal merespons aksi: ' + (err.message || err), 'error');
+    } finally {
       isSubmitting = false;
     }
   }
@@ -1225,85 +1255,92 @@ const CoupGame = (function () {
     if (state.status !== 'block_reaction') return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const block = state.currentBlock;
-    const blocker = state.players[block.blockerId];
-    const actionLogs = [...(state.actionLogs || [])];
+      const block = state.currentBlock;
+      if (!block) return;
+      const blocker = state.players[block.blockerId];
+      if (!blocker) return;
+      const actionLogs = [...(state.actionLogs || [])];
 
-    // Accept Block: Action cancelled, turn advances
-    if (reactionType === 'accept') {
-      actionLogs.push({
-        text: `[${currentPlayer.name}] menerima blokir dari [${blocker.name}]. Aksi dibatalkan.`,
-        timestamp: Date.now()
-      });
-
-      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, state.players);
-      await DB.updateGameState(currentRoom.code, 'coup', {
-        actionLogs,
-        status: 'action_turn',
-        currentTurnPlayerId: nextTurnData.playerId,
-        turnIndex: nextTurnData.index,
-        currentAction: null,
-        currentBlock: null
-      });
-      isSubmitting = false;
-      return;
-    }
-
-    // Challenge Block!
-    if (reactionType === 'challenge') {
-      UI.Sound.gong();
-      const blockerLivingCards = (blocker.cards || []).filter(c => c.isAlive);
-      const blockerHasRole = blockerLivingCards.some(c => c.role === block.claimedRole);
-
-      if (blockerHasRole) {
-        // Blocker proved their role! Challenger loses card, block succeeds!
+      // Accept Block: Action cancelled, turn advances
+      if (reactionType === 'accept') {
         actionLogs.push({
-          text: `🚨 [${currentPlayer.name}] menantang blokir [${blocker.name}]... dan [${blocker.name}] JUJUR MEMILIKINYA! [${currentPlayer.name}] kehilangan 1 kartu dan aksi tetap batal!`,
+          text: `[${currentPlayer.name}] menerima blokir dari [${blocker.name}]. Aksi dibatalkan.`,
           timestamp: Date.now()
         });
 
-        // Replace blocker's card with fresh card from deck
-        const deck = [...(state.deck || [])];
-        const players = { ...state.players };
-        const cardIndex = players[block.blockerId].cards.findIndex(c => c.isAlive && c.role === block.claimedRole);
-        if (cardIndex !== -1 && deck.length > 0) {
-          const provenCard = players[block.blockerId].cards[cardIndex];
-          const newCard = deck.pop();
-          deck.push(provenCard);
-          deck.sort(() => 0.5 - Math.random());
-          players[block.blockerId].cards[cardIndex] = newCard;
-        }
-
-        await DB.updateGameState(currentRoom.code, 'coup', {
-          deck,
-          players,
-          actionLogs,
-          status: 'card_reveal_choice',
-          pendingCardLoss: {
-            targetPlayerId: currentPlayer.id,
-            reason: 'failed_challenge',
-            nextStep: 'advance_turn'
-          }
-        });
-      } else {
-        // Blocker caught bluffing! Blocker loses 1 card, original action succeeds!
-        actionLogs.push({
-          text: `💥 [${currentPlayer.name}] menantang blokir [${blocker.name}]... dan TERBUKTI BOHONG! [${blocker.name}] harus mengorbankan 1 kartu dan aksi awal tetap berlanjut!`,
-          timestamp: Date.now()
-        });
-
+        const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, state.players);
         await DB.updateGameState(currentRoom.code, 'coup', {
           actionLogs,
-          status: 'card_reveal_choice',
-          pendingCardLoss: {
-            targetPlayerId: block.blockerId,
-            reason: 'bluff_caught',
-            nextStep: 'continue_action'
-          }
+          status: 'action_turn',
+          currentTurnPlayerId: nextTurnData.playerId,
+          turnIndex: nextTurnData.index,
+          currentAction: null,
+          currentBlock: null
         });
+        return;
       }
+
+      // Challenge Block!
+      if (reactionType === 'challenge') {
+        UI.Sound.gong();
+        const blockerLivingCards = (blocker.cards || []).filter(c => c.isAlive);
+        const blockerHasRole = blockerLivingCards.some(c => c.role === block.claimedRole);
+
+        if (blockerHasRole) {
+          // Blocker proved their role! Challenger loses card, block succeeds!
+          actionLogs.push({
+            text: `🚨 [${currentPlayer.name}] menantang blokir [${blocker.name}]... dan [${blocker.name}] JUJUR MEMILIKINYA! [${currentPlayer.name}] kehilangan 1 kartu dan aksi tetap batal!`,
+            timestamp: Date.now()
+          });
+
+          // Replace blocker's card with fresh card from deck
+          const deck = [...(state.deck || [])];
+          const players = { ...state.players };
+          const cardIndex = (players[block.blockerId]?.cards || []).findIndex(c => c.isAlive && c.role === block.claimedRole);
+          if (cardIndex !== -1 && deck.length > 0) {
+            const provenCard = players[block.blockerId].cards[cardIndex];
+            const newCard = deck.pop();
+            deck.push(provenCard);
+            deck.sort(() => 0.5 - Math.random());
+            players[block.blockerId].cards[cardIndex] = newCard;
+          }
+
+          await DB.updateGameState(currentRoom.code, 'coup', {
+            deck,
+            players,
+            actionLogs,
+            status: 'card_reveal_choice',
+            pendingCardLoss: {
+              targetPlayerId: currentPlayer.id,
+              reason: 'failed_challenge',
+              nextStep: 'advance_turn'
+            }
+          });
+        } else {
+          // Blocker caught bluffing! Blocker loses 1 card, original action succeeds!
+          actionLogs.push({
+            text: `💥 [${currentPlayer.name}] menantang blokir [${blocker.name}]... dan TERBUKTI BOHONG! [${blocker.name}] harus mengorbankan 1 kartu dan aksi awal tetap berlanjut!`,
+            timestamp: Date.now()
+          });
+
+          await DB.updateGameState(currentRoom.code, 'coup', {
+            actionLogs,
+            status: 'card_reveal_choice',
+            pendingCardLoss: {
+              targetPlayerId: block.blockerId,
+              reason: 'bluff_caught',
+              nextStep: 'continue_action'
+            }
+          });
+        }
+      }
+    } catch (err) {
+      UI.Logger('COUP', 'Error reacting to block:', err, true);
+      UI.Toast('Gagal merespons blokir: ' + (err.message || err), 'error');
+    } finally {
       isSubmitting = false;
     }
   }
@@ -1410,65 +1447,69 @@ const CoupGame = (function () {
     if (state.pendingCardLoss?.targetPlayerId !== currentPlayer.id) return;
 
     isSubmitting = true;
-    UI.Sound.gong();
+    try {
+      UI.Sound.gong();
 
-    const players = { ...state.players };
-    const myData = players[currentPlayer.id];
-    const cardIndex = myData.cards.findIndex(c => c.id === cardId && c.isAlive);
+      const players = { ...state.players };
+      const myData = players[currentPlayer.id];
+      if (!myData || !Array.isArray(myData.cards)) return;
+      const cardIndex = myData.cards.findIndex(c => c.id === cardId && c.isAlive);
 
-    if (cardIndex === -1) {
-      isSubmitting = false;
-      return;
-    }
+      if (cardIndex === -1) {
+        return;
+      }
 
-    // Kill card
-    myData.cards[cardIndex].isAlive = false;
-    const revealedRole = myData.cards[cardIndex].role;
+      // Kill card
+      myData.cards[cardIndex].isAlive = false;
+      const revealedRole = myData.cards[cardIndex].role;
 
-    // Check if player is eliminated
-    const livingCards = myData.cards.filter(c => c.isAlive);
-    if (livingCards.length === 0) {
-      myData.isAlive = false;
-    }
+      // Check if player is eliminated
+      const livingCards = myData.cards.filter(c => c.isAlive);
+      if (livingCards.length === 0) {
+        myData.isAlive = false;
+      }
 
-    const actionLogs = [...(state.actionLogs || [])];
-    actionLogs.push({
-      text: `🎴 [${currentPlayer.name}] kehilangan pengaruh kartu [${ROLES_DEF[revealedRole]?.name}]!`,
-      timestamp: Date.now()
-    });
-
-    // Check Win Condition: Only 1 living player left?
-    const livingPlayers = Object.values(players).filter(p => p.isAlive);
-    if (livingPlayers.length <= 1) {
-      const winner = livingPlayers[0] || null;
-      await DB.updateGameState(currentRoom.code, 'coup', {
-        players,
-        actionLogs,
-        status: 'game_over',
-        winnerId: winner ? winner.id : null
+      const actionLogs = [...(state.actionLogs || [])];
+      actionLogs.push({
+        text: `🎴 [${currentPlayer.name}] kehilangan pengaruh kartu [${ROLES_DEF[revealedRole]?.name}]!`,
+        timestamp: Date.now()
       });
+
+      // Check Win Condition: Only 1 living player left?
+      const livingPlayers = Object.values(players).filter(p => p.isAlive);
+      if (livingPlayers.length <= 1) {
+        const winner = livingPlayers[0] || null;
+        await DB.updateGameState(currentRoom.code, 'coup', {
+          players,
+          actionLogs,
+          status: 'game_over',
+          winnerId: winner ? winner.id : null
+        });
+        return;
+      }
+
+      // Resume or advance turn based on nextStep
+      const nextStep = state.pendingCardLoss?.nextStep;
+      if (nextStep === 'continue_action' && state.currentAction) {
+        await resolveSuccessfulAction({ ...state, players, actionLogs }, state.currentAction);
+      } else {
+        const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, players);
+        await DB.updateGameState(currentRoom.code, 'coup', {
+          players,
+          actionLogs,
+          status: 'action_turn',
+          currentTurnPlayerId: nextTurnData.playerId,
+          turnIndex: nextTurnData.index,
+          currentAction: null,
+          pendingCardLoss: null
+        });
+      }
+    } catch (err) {
+      UI.Logger('COUP', 'Error choosing card to reveal:', err, true);
+      UI.Toast('Gagal mengorbankan kartu: ' + (err.message || err), 'error');
+    } finally {
       isSubmitting = false;
-      return;
     }
-
-    // Resume or advance turn based on nextStep
-    const nextStep = state.pendingCardLoss?.nextStep;
-    if (nextStep === 'continue_action' && state.currentAction) {
-      await resolveSuccessfulAction({ ...state, players, actionLogs }, state.currentAction);
-    } else {
-      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, players);
-      await DB.updateGameState(currentRoom.code, 'coup', {
-        players,
-        actionLogs,
-        status: 'action_turn',
-        currentTurnPlayerId: nextTurnData.playerId,
-        turnIndex: nextTurnData.index,
-        currentAction: null,
-        pendingCardLoss: null
-      });
-    }
-
-    isSubmitting = false;
   }
 
   /**
@@ -1493,51 +1534,57 @@ const CoupGame = (function () {
     if (state.pendingExchange?.playerId !== currentPlayer.id) return;
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const myData = state.players[currentPlayer.id];
-    const myLivingCards = (myData.cards || []).filter(c => c.isAlive);
-    const drawn = state.pendingExchange.drawnCards || [];
-    const pool = [...myLivingCards, ...drawn];
+      const myData = state.players[currentPlayer.id];
+      if (!myData) return;
+      const myLivingCards = (myData.cards || []).filter(c => c.isAlive);
+      const drawn = state.pendingExchange.drawnCards || [];
+      const pool = [...myLivingCards, ...drawn];
 
-    if (selectedExchangeCardIds.size !== myLivingCards.length) {
-      UI.Toast(`Pilih tepat ${myLivingCards.length} kartu untuk disimpan!`, 'warning');
+      if (selectedExchangeCardIds.size !== myLivingCards.length) {
+        UI.Toast(`Pilih tepat ${myLivingCards.length} kartu untuk disimpan!`, 'warning');
+        return;
+      }
+
+      const newHandLivingCards = pool.filter(c => selectedExchangeCardIds.has(c.id));
+      const returnedCards = pool.filter(c => !selectedExchangeCardIds.has(c.id));
+
+      // Reconstruct player hand preserving dead cards
+      const deadCards = (myData.cards || []).filter(c => !c.isAlive);
+      const players = { ...state.players };
+      players[currentPlayer.id].cards = [...newHandLivingCards, ...deadCards];
+
+      // Return unselected to deck
+      const deck = [...(state.deck || []), ...returnedCards];
+      deck.sort(() => 0.5 - Math.random());
+
+      const actionLogs = [...(state.actionLogs || [])];
+      actionLogs.push({
+        text: `[${currentPlayer.name}] telah menyelesaikan pertukaran kartu Ambassador.`,
+        timestamp: Date.now()
+      });
+
+      const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, players);
+      await DB.updateGameState(currentRoom.code, 'coup', {
+        deck,
+        players,
+        actionLogs,
+        status: 'action_turn',
+        currentTurnPlayerId: nextTurnData.playerId,
+        turnIndex: nextTurnData.index,
+        currentAction: null,
+        pendingExchange: null
+      });
+
+      selectedExchangeCardIds.clear();
+    } catch (err) {
+      UI.Logger('COUP', 'Error submitting exchange choice:', err, true);
+      UI.Toast('Gagal menukar kartu: ' + (err.message || err), 'error');
+    } finally {
       isSubmitting = false;
-      return;
     }
-
-    const newHandLivingCards = pool.filter(c => selectedExchangeCardIds.has(c.id));
-    const returnedCards = pool.filter(c => !selectedExchangeCardIds.has(c.id));
-
-    // Reconstruct player hand preserving dead cards
-    const deadCards = (myData.cards || []).filter(c => !c.isAlive);
-    const players = { ...state.players };
-    players[currentPlayer.id].cards = [...newHandLivingCards, ...deadCards];
-
-    // Return unselected to deck
-    const deck = [...(state.deck || []), ...returnedCards];
-    deck.sort(() => 0.5 - Math.random());
-
-    const actionLogs = [...(state.actionLogs || [])];
-    actionLogs.push({
-      text: `[${currentPlayer.name}] telah menyelesaikan pertukaran kartu Ambassador.`,
-      timestamp: Date.now()
-    });
-
-    const nextTurnData = getNextTurnData(state.turnOrder, state.turnIndex, players);
-    await DB.updateGameState(currentRoom.code, 'coup', {
-      deck,
-      players,
-      actionLogs,
-      status: 'action_turn',
-      currentTurnPlayerId: nextTurnData.playerId,
-      turnIndex: nextTurnData.index,
-      currentAction: null,
-      pendingExchange: null
-    });
-
-    selectedExchangeCardIds.clear();
-    isSubmitting = false;
   }
 
   /**

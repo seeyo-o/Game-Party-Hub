@@ -46,11 +46,23 @@ const TrioGame = (function () {
   };
 
   /**
-   * Helper: Mengambil state permainan Trio dari roomData
+   * Helper: Mengambil state permainan Trio dari roomData dengan normalisasi default
    */
   function getGameState(roomData) {
     if (!roomData) return {};
-    return roomData.trioGame || roomData.gameState?.trio || {};
+    const state = roomData.trioGame || roomData.gameState?.trio || {};
+    if (!Array.isArray(state.revealedSteps)) state.revealedSteps = [];
+    if (!Array.isArray(state.tableCards)) state.tableCards = [];
+    if (!Array.isArray(state.turnOrder)) state.turnOrder = [];
+    if (!Array.isArray(state.actionLogs)) state.actionLogs = [];
+    if (!state.players || typeof state.players !== 'object') state.players = {};
+    Object.values(state.players).forEach(p => {
+      if (p) {
+        if (!Array.isArray(p.hand)) p.hand = [];
+        if (!Array.isArray(p.triosWon)) p.triosWon = [];
+      }
+    });
+    return state;
   }
 
   /**
@@ -120,60 +132,66 @@ const TrioGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.fanfare();
+    try {
+      UI.Sound.fanfare();
 
-    const winMode = customWinMode || currentRoom.trioGame?.winMode || 'simple';
-    const config = getDealingConfig(playersList.length);
+      const winMode = customWinMode || currentRoom.trioGame?.winMode || 'simple';
+      const config = getDealingConfig(playersList.length);
 
-    UI.Logger('TRIO', `Starting game. Players: ${playersList.length}, Mode: ${winMode}`);
+      UI.Logger('TRIO', `Starting game. Players: ${playersList.length}, Mode: ${winMode}`);
 
-    // Acak dek 36 kartu
-    const rawDeck = generateTrioDeck();
+      // Acak dek 36 kartu
+      const rawDeck = generateTrioDeck();
 
-    // Bagikan kartu tangan ke setiap pemain (diurutkan otomatis dari terkecil ke terbesar)
-    const playersData = {};
-    const turnOrder = shuffle(playersList.map(p => p.id));
+      // Bagikan kartu tangan ke setiap pemain (diurutkan otomatis dari terkecil ke terbesar)
+      const playersData = {};
+      const turnOrder = shuffle(playersList.map(p => p.id));
 
-    turnOrder.forEach(pid => {
-      const p = currentRoom.players[pid];
-      const unSortedHand = rawDeck.splice(0, config.handSize);
-      playersData[pid] = {
-        id: pid,
-        name: p.name,
-        hand: sortHand(unSortedHand),
-        triosWon: [] // Array angka trio yang berhasil dikoleksi, misal [4, 7]
+      turnOrder.forEach(pid => {
+        const p = currentRoom.players[pid];
+        const unSortedHand = rawDeck.splice(0, config.handSize);
+        playersData[pid] = {
+          id: pid,
+          name: p.name,
+          hand: sortHand(unSortedHand),
+          triosWon: [] // Array angka trio yang berhasil dikoleksi, misal [4, 7]
+        };
+      });
+
+      // Sisa kartu diletakkan tertutup di Meja Tengah
+      const tableCards = rawDeck.map((card, idx) => ({
+        ...card,
+        tableIndex: idx,
+        isRevealed: false
+      }));
+
+      const initialGameState = {
+        status: 'playing', // 'playing' | 'mismatch_pause' | 'game_over'
+        winMode: winMode, // 'simple' | 'spicy'
+        turnOrder: turnOrder,
+        turnIndex: 0,
+        currentTurnPlayerId: turnOrder[0],
+        players: playersData,
+        tableCards: tableCards,
+        revealedSteps: [], // Kartu yang sedang dibuka pada giliran aktif [stepEntry, stepEntry, ...]
+        mismatchData: null,
+        winnerPlayerId: null,
+        winReason: null,
+        actionLogs: [
+          {
+            text: `🃏 Permainan Trio dimulai dalam [Mode ${winMode === 'spicy' ? 'Spicy / Picante' : 'Simple'}]! Meja Tengah memiliki ${tableCards.length} kartu tertutup. Giliran pertama: [${playersData[turnOrder[0]].name}].`,
+            timestamp: Date.now()
+          }
+        ]
       };
-    });
 
-    // Sisa kartu diletakkan tertutup di Meja Tengah
-    const tableCards = rawDeck.map((card, idx) => ({
-      ...card,
-      tableIndex: idx,
-      isRevealed: false
-    }));
-
-    const initialGameState = {
-      status: 'playing', // 'playing' | 'mismatch_pause' | 'game_over'
-      winMode: winMode, // 'simple' | 'spicy'
-      turnOrder: turnOrder,
-      turnIndex: 0,
-      currentTurnPlayerId: turnOrder[0],
-      players: playersData,
-      tableCards: tableCards,
-      revealedSteps: [], // Kartu yang sedang dibuka pada giliran aktif [stepEntry, stepEntry, ...]
-      mismatchData: null,
-      winnerPlayerId: null,
-      winReason: null,
-      actionLogs: [
-        {
-          text: `🃏 Permainan Trio dimulai dalam [Mode ${winMode === 'spicy' ? 'Spicy / Picante' : 'Simple'}]! Meja Tengah memiliki ${tableCards.length} kartu tertutup. Giliran pertama: [${playersData[turnOrder[0]].name}].`,
-          timestamp: Date.now()
-        }
-      ]
-    };
-
-    await DB.updateGameState(currentRoom.code, 'trio', initialGameState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'trio', initialGameState);
+    } catch (err) {
+      UI.Logger('TRIO', 'Error starting game:', err, true);
+      UI.Toast('Gagal memulai permainan Trio: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -181,8 +199,15 @@ const TrioGame = (function () {
    */
   async function setWinMode(mode) {
     if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
-    UI.Sound.click();
-    await DB.updateGameState(currentRoom.code, 'trio', { winMode: mode });
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
+      await DB.updateGameState(currentRoom.code, 'trio', { winMode: mode });
+    } catch (err) {
+      UI.Logger('TRIO', 'Error setting win mode:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -248,9 +273,10 @@ const TrioGame = (function () {
   /**
    * 3. AKSI PEMBUKAAN KARTU OLEH PEMAIN AKTIF
    * @param {string} sourceType - 'table' | 'player_hand'
-   * @param {Object} options - { tableIndex } ATAU { targetPlayerId, edge: 'lowest'|'highest' }
+   * @param {Object|number|string} optionsOrTarget - { tableIndex } | tableIndex ATAU { targetPlayerId, edge } | targetPlayerId
+   * @param {string} [edgeParam] - 'lowest' | 'highest' (jika parameter kedua berupa string targetPlayerId)
    */
-  async function revealCard(sourceType, options = {}) {
+  async function revealCard(sourceType, optionsOrTarget = {}, edgeParam = null) {
     if (!currentRoom || !currentPlayer || isSubmitting) return;
     const state = getGameState(currentRoom);
 
@@ -265,191 +291,208 @@ const TrioGame = (function () {
     }
 
     isSubmitting = true;
-
-    const newState = JSON.parse(JSON.stringify(state));
-    const activePlayer = newState.players[currentPlayer.id];
-    let revealedCard = null;
-    let stepEntry = null;
-
-    // A. Buka Kartu dari Meja Tengah
-    if (sourceType === 'table') {
-      const { tableIndex } = options;
-      const card = newState.tableCards[tableIndex];
-
-      if (!card || card.isRevealed) {
-        UI.Toast('Kartu meja ini sudah tidak tersedia atau sedang terbuka!', 'warning');
-        isSubmitting = false;
+    try {
+      const newState = JSON.parse(JSON.stringify(state));
+      const activePlayer = newState.players[currentPlayer.id];
+      if (!activePlayer) {
+        UI.Toast('Data pemain aktif tidak ditemukan!', 'error');
         return;
       }
 
-      // Pastikan kartu meja ini belum masuk dalam revealedSteps giliran ini
-      const alreadyInSteps = newState.revealedSteps.some(s => s.sourceType === 'table' && s.tableIndex === tableIndex);
-      if (alreadyInSteps) {
-        UI.Toast('Kartu ini sudah kamu buka pada langkah sebelumnya!', 'warning');
-        isSubmitting = false;
-        return;
-      }
+      let revealedCard = null;
+      let stepEntry = null;
 
-      revealedCard = { ...card };
-      stepEntry = {
-        sourceType: 'table',
-        tableIndex: tableIndex,
-        card: revealedCard,
-        displayName: `Meja Tengah (Posisi #${tableIndex + 1})`
-      };
-    } 
-    // B. Buka Kartu Ujung dari Tangan Pemain (Diri Sendiri atau Lawan)
-    else if (sourceType === 'player_hand') {
-      const { targetPlayerId, edge } = options;
-      const targetPlayer = newState.players[targetPlayerId];
-
-      if (!targetPlayer || !targetPlayer.hand || targetPlayer.hand.length === 0) {
-        UI.Toast('Pemain ini tidak memiliki kartu di tangannya!', 'warning');
-        isSubmitting = false;
-        return;
-      }
-
-      // Pastikan tangan target player selalu terurut sebelum mengambil kartu
-      targetPlayer.hand = sortHand(targetPlayer.hand);
-
-      // Ambil kartu dari ujung yang belum terbuka di ronde berjalan
-      const unrevealedHand = targetPlayer.hand.filter(c => !newState.revealedSteps.some(s => s.sourceType === 'player_hand' && s.card.id === c.id));
-      if (unrevealedHand.length === 0) {
-        UI.Toast('Seluruh kartu di tangan pemain ini sedang terbuka!', 'warning');
-        isSubmitting = false;
-        return;
-      }
-
-      const candidateCard = (edge === 'lowest') ? unrevealedHand[0] : unrevealedHand[unrevealedHand.length - 1];
-
-      revealedCard = candidateCard;
-      const edgeLabel = edge === 'lowest' ? 'TERKECIL (Kiri)' : 'TERBESAR (Kanan)';
-      stepEntry = {
-        sourceType: 'player_hand',
-        targetPlayerId: targetPlayerId,
-        targetPlayerName: targetPlayer.name,
-        edge: edge,
-        card: revealedCard,
-        displayName: `Tangan [${targetPlayer.name}] - ${edgeLabel}`
-      };
-    }
-
-    if (!stepEntry || !revealedCard) {
-      isSubmitting = false;
-      return;
-    }
-
-    UI.Sound.pop();
-
-    const previousSteps = newState.revealedSteps;
-    const stepNumber = previousSteps.length + 1; // Langkah 1, 2, atau 3
-
-    // ========================================================================
-    // VALIDASI LANGKAH PEMBUKAAN KARTU
-    // ========================================================================
-
-    // LANGKAH 1: Kartu Pertama Terbuka
-    if (stepNumber === 1) {
-      newState.revealedSteps = [stepEntry];
-      newState.actionLogs.push({
-        text: `🔍 [${activePlayer.name}] membuka Kartu Ke-1: [${stepEntry.displayName}] bernilai [${revealedCard.number}].`,
-        timestamp: Date.now()
-      });
-      await DB.updateGameState(currentRoom.code, 'trio', newState);
-      isSubmitting = false;
-      return;
-    }
-
-    // LANGKAH 2: Bandingkan dengan Kartu Pertama
-    if (stepNumber === 2) {
-      const firstCard = previousSteps[0].card;
-
-      if (revealedCard.number === firstCard.number) {
-        // SAMA! Lanjut ke Kartu Ke-3!
-        UI.Sound.flip();
-        newState.revealedSteps.push(stepEntry);
-        newState.actionLogs.push({
-          text: `✨ [${activePlayer.name}] membuka Kartu Ke-2: [${stepEntry.displayName}] bernilai [${revealedCard.number}]! Angka KEMBAR! Lanjut ke kartu ke-3!`,
-          timestamp: Date.now()
-        });
-        await DB.updateGameState(currentRoom.code, 'trio', newState);
-        isSubmitting = false;
-        return;
-      } else {
-        // BERBEDA! Gagal pada langkah kedua!
-        handleMismatch(newState, activePlayer, [...previousSteps, stepEntry]);
-        await DB.updateGameState(currentRoom.code, 'trio', newState);
-        isSubmitting = false;
-        return;
-      }
-    }
-
-    // LANGKAH 3: Bandingkan dengan Kartu Pertama
-    if (stepNumber === 3) {
-      const firstCard = previousSteps[0].card;
-
-      if (revealedCard.number === firstCard.number) {
-        // 🎉 TRIO BERHASIL! Tiga Kartu Kembar Ditemukan!
-        UI.Sound.fanfare();
-        const allThreeSteps = [...previousSteps, stepEntry];
-        const trioNumber = revealedCard.number;
-
-        // 1. Simpan angka trio ke koleksi pemain aktif
-        activePlayer.triosWon.push(trioNumber);
-
-        // 2. Ambil ketiga kartu keluar dari Meja atau Tangan pemiliknya
-        allThreeSteps.forEach(step => {
-          if (step.sourceType === 'table') {
-            // Tandai kartu meja sebagai tereliminasi/diambil
-            const tblCard = newState.tableCards[step.tableIndex];
-            if (tblCard) {
-              tblCard.isRevealed = true;
-              tblCard.isClaimed = true;
-            }
-          } else if (step.sourceType === 'player_hand') {
-            const p = newState.players[step.targetPlayerId];
-            if (p && p.hand) {
-              p.hand = p.hand.filter(c => c.id !== step.card.id);
-              p.hand = sortHand(p.hand);
-            }
-          }
-        });
-
-        newState.revealedSteps = [];
-
-        newState.actionLogs.push({
-          text: `🎉 TRIO BERHASIL! [${activePlayer.name}] berhasil menemukan 3 kartu bernilai [${trioNumber}]! Trio diamankan ke koleksi.`,
-          timestamp: Date.now()
-        });
-
-        // 3. Periksa Syarat Kemenangan
-        const winCheck = checkVictoryCondition(activePlayer.triosWon, newState.winMode);
-
-        if (winCheck.won) {
-          newState.status = 'game_over';
-          newState.winnerPlayerId = activePlayer.id;
-          newState.winReason = winCheck.message;
-          newState.actionLogs.push({
-            text: `👑 [${activePlayer.name}] MENANG PERMAINAN karena ${winCheck.message}!`,
-            timestamp: Date.now()
-          });
+      // A. Buka Kartu dari Meja Tengah
+      if (sourceType === 'table') {
+        let tableIndex;
+        if (typeof optionsOrTarget === 'object' && optionsOrTarget !== null) {
+          tableIndex = optionsOrTarget.tableIndex;
         } else {
-          // Pindahkan giliran ke pemain berikutnya
-          const nextIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
-          newState.turnIndex = nextIndex;
-          newState.currentTurnPlayerId = newState.turnOrder[nextIndex];
+          tableIndex = Number(optionsOrTarget);
         }
 
-        await DB.updateGameState(currentRoom.code, 'trio', newState);
-        isSubmitting = false;
-        return;
-      } else {
-        // GAGAL PADA KARTU KETIGA!
-        handleMismatch(newState, activePlayer, [...previousSteps, stepEntry]);
-        await DB.updateGameState(currentRoom.code, 'trio', newState);
-        isSubmitting = false;
+        const card = (newState.tableCards || [])[tableIndex];
+
+        if (!card || card.isRevealed) {
+          UI.Toast('Kartu meja ini sudah tidak tersedia atau sedang terbuka!', 'warning');
+          return;
+        }
+
+        // Pastikan kartu meja ini belum masuk dalam revealedSteps giliran ini
+        const alreadyInSteps = (newState.revealedSteps || []).some(s => s.sourceType === 'table' && s.tableIndex === tableIndex);
+        if (alreadyInSteps) {
+          UI.Toast('Kartu ini sudah kamu buka pada langkah sebelumnya!', 'warning');
+          return;
+        }
+
+        revealedCard = { ...card };
+        stepEntry = {
+          sourceType: 'table',
+          tableIndex: tableIndex,
+          card: revealedCard,
+          displayName: `Meja Tengah (Posisi #${tableIndex + 1})`
+        };
+      } 
+      // B. Buka Kartu Ujung dari Tangan Pemain (Diri Sendiri atau Lawan)
+      else if (sourceType === 'player_hand') {
+        let targetPlayerId;
+        let edge;
+        if (typeof optionsOrTarget === 'object' && optionsOrTarget !== null) {
+          targetPlayerId = optionsOrTarget.targetPlayerId;
+          edge = optionsOrTarget.edge;
+        } else {
+          targetPlayerId = String(optionsOrTarget);
+          edge = edgeParam || 'lowest';
+        }
+
+        const targetPlayer = (newState.players || {})[targetPlayerId];
+
+        if (!targetPlayer || !targetPlayer.hand || targetPlayer.hand.length === 0) {
+          UI.Toast('Pemain ini tidak memiliki kartu di tangannya!', 'warning');
+          return;
+        }
+
+        // Pastikan tangan target player selalu terurut sebelum mengambil kartu
+        targetPlayer.hand = sortHand(targetPlayer.hand);
+
+        // Ambil kartu dari ujung yang belum terbuka di ronde berjalan
+        const unrevealedHand = targetPlayer.hand.filter(c => !(newState.revealedSteps || []).some(s => s.sourceType === 'player_hand' && s.card && s.card.id === c.id));
+        if (unrevealedHand.length === 0) {
+          UI.Toast('Seluruh kartu di tangan pemain ini sedang terbuka!', 'warning');
+          return;
+        }
+
+        const candidateCard = (edge === 'lowest') ? unrevealedHand[0] : unrevealedHand[unrevealedHand.length - 1];
+
+        revealedCard = candidateCard;
+        const edgeLabel = edge === 'lowest' ? 'TERKECIL (Kiri)' : 'TERBESAR (Kanan)';
+        stepEntry = {
+          sourceType: 'player_hand',
+          targetPlayerId: targetPlayerId,
+          targetPlayerName: targetPlayer.name,
+          edge: edge,
+          card: revealedCard,
+          displayName: `Tangan [${targetPlayer.name}] - ${edgeLabel}`
+        };
+      }
+
+      if (!stepEntry || !revealedCard) {
         return;
       }
+
+      UI.Sound.pop();
+
+      const previousSteps = newState.revealedSteps || [];
+      const stepNumber = previousSteps.length + 1; // Langkah 1, 2, atau 3
+
+      // ========================================================================
+      // VALIDASI LANGKAH PEMBUKAAN KARTU
+      // ========================================================================
+
+      // LANGKAH 1: Kartu Pertama Terbuka
+      if (stepNumber === 1) {
+        newState.revealedSteps = [stepEntry];
+        newState.actionLogs.push({
+          text: `🔍 [${activePlayer.name}] membuka Kartu Ke-1: [${stepEntry.displayName}] bernilai [${revealedCard.number}].`,
+          timestamp: Date.now()
+        });
+        await DB.updateGameState(currentRoom.code, 'trio', newState);
+        return;
+      }
+
+      // LANGKAH 2: Bandingkan dengan Kartu Pertama
+      if (stepNumber === 2) {
+        const firstCard = previousSteps[0].card;
+
+        if (revealedCard.number === firstCard.number) {
+          // SAMA! Lanjut ke Kartu Ke-3!
+          UI.Sound.flip();
+          newState.revealedSteps.push(stepEntry);
+          newState.actionLogs.push({
+            text: `✨ [${activePlayer.name}] membuka Kartu Ke-2: [${stepEntry.displayName}] bernilai [${revealedCard.number}]! Angka KEMBAR! Lanjut ke kartu ke-3!`,
+            timestamp: Date.now()
+          });
+          await DB.updateGameState(currentRoom.code, 'trio', newState);
+          return;
+        } else {
+          // BERBEDA! Gagal pada langkah kedua!
+          handleMismatch(newState, activePlayer, [...previousSteps, stepEntry]);
+          await DB.updateGameState(currentRoom.code, 'trio', newState);
+          return;
+        }
+      }
+
+      // LANGKAH 3: Bandingkan dengan Kartu Pertama
+      if (stepNumber === 3) {
+        const firstCard = previousSteps[0].card;
+
+        if (revealedCard.number === firstCard.number) {
+          // 🎉 TRIO BERHASIL! Tiga Kartu Kembar Ditemukan!
+          UI.Sound.fanfare();
+          const allThreeSteps = [...previousSteps, stepEntry];
+          const trioNumber = revealedCard.number;
+
+          // 1. Simpan angka trio ke koleksi pemain aktif
+          if (!Array.isArray(activePlayer.triosWon)) activePlayer.triosWon = [];
+          activePlayer.triosWon.push(trioNumber);
+
+          // 2. Ambil ketiga kartu keluar dari Meja atau Tangan pemiliknya
+          allThreeSteps.forEach(step => {
+            if (step.sourceType === 'table') {
+              // Tandai kartu meja sebagai tereliminasi/diambil
+              const tblCard = (newState.tableCards || [])[step.tableIndex];
+              if (tblCard) {
+                tblCard.isRevealed = true;
+                tblCard.isClaimed = true;
+              }
+            } else if (step.sourceType === 'player_hand') {
+              const p = (newState.players || {})[step.targetPlayerId];
+              if (p && p.hand) {
+                p.hand = p.hand.filter(c => c.id !== step.card.id);
+                p.hand = sortHand(p.hand);
+              }
+            }
+          });
+
+          newState.revealedSteps = [];
+
+          newState.actionLogs.push({
+            text: `🎉 TRIO BERHASIL! [${activePlayer.name}] berhasil menemukan 3 kartu bernilai [${trioNumber}]! Trio diamankan ke koleksi.`,
+            timestamp: Date.now()
+          });
+
+          // 3. Periksa Syarat Kemenangan
+          const winCheck = checkVictoryCondition(activePlayer.triosWon, newState.winMode);
+
+          if (winCheck.won) {
+            newState.status = 'game_over';
+            newState.winnerPlayerId = activePlayer.id;
+            newState.winReason = winCheck.message;
+            newState.actionLogs.push({
+              text: `👑 [${activePlayer.name}] MENANG PERMAINAN karena ${winCheck.message}!`,
+              timestamp: Date.now()
+            });
+          } else {
+            // Pindahkan giliran ke pemain berikutnya
+            const nextIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
+            newState.turnIndex = nextIndex;
+            newState.currentTurnPlayerId = newState.turnOrder[nextIndex];
+          }
+
+          await DB.updateGameState(currentRoom.code, 'trio', newState);
+          return;
+        } else {
+          // GAGAL PADA KARTU KETIGA!
+          handleMismatch(newState, activePlayer, [...previousSteps, stepEntry]);
+          await DB.updateGameState(currentRoom.code, 'trio', newState);
+          return;
+        }
+      }
+    } catch (err) {
+      UI.Logger('TRIO', 'Error during revealCard:', err, true);
+      UI.Toast('Terjadi kesalahan saat membuka kartu: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
   }
 
@@ -481,26 +524,30 @@ const TrioGame = (function () {
     if (state.status !== 'mismatch_pause') return;
 
     isSubmitting = true;
+    try {
+      const newState = JSON.parse(JSON.stringify(state));
 
-    const newState = JSON.parse(JSON.stringify(state));
+      // Reset status & langkah
+      newState.status = 'playing';
+      newState.revealedSteps = [];
+      newState.mismatchData = null;
 
-    // Reset status & langkah
-    newState.status = 'playing';
-    newState.revealedSteps = [];
-    newState.mismatchData = null;
+      // Pastikan seluruh tangan pemain tetap terurut rapi
+      Object.values(newState.players || {}).forEach(p => {
+        if (p) p.hand = sortHand(p.hand || []);
+      });
 
-    // Pastikan seluruh tangan pemain tetap terurut rapi
-    Object.values(newState.players || {}).forEach(p => {
-      p.hand = sortHand(p.hand || []);
-    });
+      // Pindahkan giliran ke pemain berikutnya
+      const nextIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
+      newState.turnIndex = nextIndex;
+      newState.currentTurnPlayerId = newState.turnOrder[nextIndex];
 
-    // Pindahkan giliran ke pemain berikutnya
-    const nextIndex = (newState.turnIndex + 1) % newState.turnOrder.length;
-    newState.turnIndex = nextIndex;
-    newState.currentTurnPlayerId = newState.turnOrder[nextIndex];
-
-    await DB.updateGameState(currentRoom.code, 'trio', newState);
-    isSubmitting = false;
+      await DB.updateGameState(currentRoom.code, 'trio', newState);
+    } catch (err) {
+      UI.Logger('TRIO', 'Error during resolveMismatch:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   /**
@@ -726,7 +773,7 @@ const TrioGame = (function () {
       const canClick = isMyTurn && !isMismatchPause;
       return `
         <div 
-          ${canClick ? `onclick="TrioGame.revealCard('table', { tableIndex: ${idx} })"` : ''}
+          ${canClick ? `onclick="TrioGame.revealCard('table', ${idx})"` : ''}
           class="w-14 h-20 sm:w-16 sm:h-24 rounded-xl bg-gradient-to-br from-cyan-600 to-sky-700 border-2 border-cyan-400/80 p-2 flex flex-col items-center justify-between shadow-sm transition-all select-none ${
             canClick ? 'hover:-translate-y-1.5 hover:shadow-md hover:border-pink-300 cursor-pointer active:scale-95' : 'opacity-80'
           }"
@@ -822,7 +869,7 @@ const TrioGame = (function () {
             
             <!-- Tombol Buka Terkecil (Paling Kiri) -->
             <button
-              ${canAsk ? `onclick="TrioGame.revealCard('player_hand', { targetPlayerId: '${pid}', edge: 'lowest' })"` : 'disabled'}
+              ${canAsk ? `onclick="TrioGame.revealCard('player_hand', '${pid}', 'lowest')"` : 'disabled'}
               class="px-2.5 py-2.5 rounded-xl font-display font-bold text-[10px] shrink-0 flex items-center gap-1 transition-all ${
                 canAsk 
                   ? 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-sm active:scale-95 cursor-pointer' 
@@ -841,7 +888,7 @@ const TrioGame = (function () {
 
             <!-- Tombol Buka Terbesar (Paling Kanan) -->
             <button
-              ${canAsk ? `onclick="TrioGame.revealCard('player_hand', { targetPlayerId: '${pid}', edge: 'highest' })"` : 'disabled'}
+              ${canAsk ? `onclick="TrioGame.revealCard('player_hand', '${pid}', 'highest')"` : 'disabled'}
               class="px-2.5 py-2.5 rounded-xl font-display font-bold text-[10px] shrink-0 flex items-center gap-1 transition-all ${
                 canAsk 
                   ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-sm active:scale-95 cursor-pointer' 

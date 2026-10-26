@@ -84,11 +84,16 @@ const WerewolfGame = (function () {
   };
 
   /**
-   * Helper: Get current Werewolf Game State from room
+   * Helper: Get current Werewolf Game State from room with defensive normalization
    */
   function getGameState(roomData) {
     if (!roomData) return {};
-    return roomData.werewolfGame || roomData.gameState?.werewolf || {};
+    const state = roomData.werewolfGame || roomData.gameState?.werewolf || {};
+    if (!state.playerRoles || typeof state.playerRoles !== 'object') state.playerRoles = {};
+    if (!state.nightActions || typeof state.nightActions !== 'object') state.nightActions = {};
+    if (!state.dayVotes || typeof state.dayVotes !== 'object') state.dayVotes = {};
+    if (!Array.isArray(state.actionLogs)) state.actionLogs = [];
+    return state;
   }
 
   /**
@@ -1243,30 +1248,38 @@ const WerewolfGame = (function () {
    * Host starts game: Distribute roles & set status to role_reveal
    */
   async function startGame() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
 
-    const playerList = Object.values(currentRoom.players || {});
-    if (playerList.length < 3) {
-      UI.Toast('Minimal 3 pemain untuk memulai Werewolf!', 'warning');
-      return;
+      const playerList = Object.values(currentRoom.players || {});
+      if (playerList.length < 3) {
+        UI.Toast('Minimal 3 pemain untuk memulai Werewolf!', 'warning');
+        return;
+      }
+
+      const playerRoles = distributeRoles(playerList);
+
+      await DB.updateGameState(currentRoom.code, 'werewolf', {
+        status: 'role_reveal',
+        round: 1,
+        playerRoles: playerRoles,
+        nightActions: {},
+        dayVotes: {},
+        nightReport: null,
+        lastNightSavedDoctorId: null,
+        hunterPendingDeath: null,
+        winner: null
+      });
+
+      UI.Toast('Kartu peran telah dibagikan secara rahasia!', 'success');
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error starting game:', err, true);
+      UI.Toast('Gagal memulai Werewolf: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    const playerRoles = distributeRoles(playerList);
-
-    await DB.updateGameState(currentRoom.code, 'werewolf', {
-      status: 'role_reveal',
-      round: 1,
-      playerRoles: playerRoles,
-      nightActions: {},
-      dayVotes: {},
-      nightReport: null,
-      lastNightSavedDoctorId: null,
-      hunterPendingDeath: null,
-      winner: null
-    });
-
-    UI.Toast('Kartu peran telah dibagikan secara rahasia!', 'success');
   }
 
   function toggleCardFlip() {
@@ -1276,35 +1289,49 @@ const WerewolfGame = (function () {
   }
 
   async function confirmReady() {
-    if (!currentRoom || !currentPlayer) return;
-    UI.Sound.click();
+    if (!currentRoom || !currentPlayer || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
 
-    const state = getGameState(currentRoom);
-    const playerRoles = { ...(state.playerRoles || {}) };
+      const state = getGameState(currentRoom);
+      const playerRoles = { ...(state.playerRoles || {}) };
 
-    if (playerRoles[currentPlayer.id]) {
-      playerRoles[currentPlayer.id].ready = true;
+      if (playerRoles[currentPlayer.id]) {
+        playerRoles[currentPlayer.id].ready = true;
+      }
+
+      // Check if everyone is ready
+      const allReady = Object.values(playerRoles).every(p => p.ready);
+
+      const updates = { playerRoles };
+      if (allReady) {
+        updates.status = 'night';
+        updates.nightActions = {};
+      }
+
+      await DB.updateGameState(currentRoom.code, 'werewolf', updates);
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error confirming ready:', err, true);
+    } finally {
+      isSubmitting = false;
     }
-
-    // Check if everyone is ready
-    const allReady = Object.values(playerRoles).every(p => p.ready);
-
-    const updates = { playerRoles };
-    if (allReady) {
-      updates.status = 'night';
-      updates.nightActions = {};
-    }
-
-    await DB.updateGameState(currentRoom.code, 'werewolf', updates);
   }
 
   async function forceStartNight() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
-    await DB.updateGameState(currentRoom.code, 'werewolf', {
-      status: 'night',
-      nightActions: {}
-    });
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
+      await DB.updateGameState(currentRoom.code, 'werewolf', {
+        status: 'night',
+        nightActions: {}
+      });
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error forcing night:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   function selectNightTarget(targetId) {
@@ -1332,40 +1359,46 @@ const WerewolfGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    // If Seer, compute result locally for instant feedback
-    if (myData.role === 'seer' && localNightSelection) {
-      const targetData = (state.playerRoles || {})[localNightSelection];
-      localSeerInspectionResult = {
-        targetName: targetData?.name || 'Pemain',
-        isWerewolf: targetData?.role === 'werewolf'
+      // If Seer, compute result locally for instant feedback
+      if (myData.role === 'seer' && localNightSelection) {
+        const targetData = (state.playerRoles || {})[localNightSelection];
+        localSeerInspectionResult = {
+          targetName: targetData?.name || 'Pemain',
+          isWerewolf: targetData?.role === 'werewolf'
+        };
+      }
+
+      const nightActions = { ...(state.nightActions || {}) };
+      nightActions[currentPlayer.id] = {
+        targetId: localNightSelection || null,
+        role: myData.role,
+        confirmed: true
       };
+
+      const livingPlayers = Object.values(state.playerRoles || {}).filter(p => p.isAlive);
+      const livingCount = livingPlayers.length;
+      const allDone = livingCount > 0 && livingPlayers.every(p => nightActions[p.id]);
+
+      const updates = { nightActions };
+
+      // Auto-resolve if all living players completed action
+      if (allDone) {
+        const resolved = resolveNightInternal(state, nightActions);
+        Object.assign(updates, resolved);
+      }
+
+      await DB.updateGameState(currentRoom.code, 'werewolf', updates);
+
+      localNightSelection = null;
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error submitting night action:', err, true);
+      UI.Toast('Gagal mengirim aksi malam: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    const nightActions = { ...(state.nightActions || {}) };
-    nightActions[currentPlayer.id] = {
-      targetId: localNightSelection || null,
-      role: myData.role,
-      confirmed: true
-    };
-
-    const livingPlayers = Object.values(state.playerRoles || {}).filter(p => p.isAlive);
-    const livingCount = livingPlayers.length;
-    const allDone = livingCount > 0 && livingPlayers.every(p => nightActions[p.id]);
-
-    const updates = { nightActions };
-
-    // Auto-resolve if all living players completed action
-    if (allDone) {
-      const resolved = resolveNightInternal(state, nightActions);
-      Object.assign(updates, resolved);
-    }
-
-    await DB.updateGameState(currentRoom.code, 'werewolf', updates);
-
-    localNightSelection = null;
-    isSubmitting = false;
   }
 
   /**
@@ -1455,21 +1488,35 @@ const WerewolfGame = (function () {
    * Host manual resolve night button
    */
   async function resolveNight() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
 
-    const state = getGameState(currentRoom);
-    const resolved = resolveNightInternal(state, state.nightActions || {});
-    await DB.updateGameState(currentRoom.code, 'werewolf', resolved);
+      const state = getGameState(currentRoom);
+      const resolved = resolveNightInternal(state, state.nightActions || {});
+      await DB.updateGameState(currentRoom.code, 'werewolf', resolved);
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error resolving night:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   async function startDayVoting() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
-    await DB.updateGameState(currentRoom.code, 'werewolf', {
-      status: 'day_voting',
-      dayVotes: {}
-    });
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
+      await DB.updateGameState(currentRoom.code, 'werewolf', {
+        status: 'day_voting',
+        dayVotes: {}
+      });
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error starting day voting:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   function selectDayVoteTarget(targetId) {
@@ -1486,25 +1533,31 @@ const WerewolfGame = (function () {
     }
 
     isSubmitting = true;
-    UI.Sound.click();
+    try {
+      UI.Sound.click();
 
-    const state = getGameState(currentRoom);
-    const dayVotes = { ...(state.dayVotes || {}) };
-    dayVotes[currentPlayer.id] = localDayVoteSelection;
+      const state = getGameState(currentRoom);
+      const dayVotes = { ...(state.dayVotes || {}) };
+      dayVotes[currentPlayer.id] = localDayVoteSelection;
 
-    const livingPlayers = Object.values(state.playerRoles || {}).filter(p => p.isAlive);
-    const allVoted = Object.keys(dayVotes).length >= livingPlayers.length;
+      const livingPlayers = Object.values(state.playerRoles || {}).filter(p => p.isAlive);
+      const allVoted = Object.keys(dayVotes).length >= livingPlayers.length;
 
-    const updates = { dayVotes };
-    if (allVoted) {
-      const resolved = resolveDayVotingInternal(state, dayVotes);
-      Object.assign(updates, resolved);
+      const updates = { dayVotes };
+      if (allVoted) {
+        const resolved = resolveDayVotingInternal(state, dayVotes);
+        Object.assign(updates, resolved);
+      }
+
+      await DB.updateGameState(currentRoom.code, 'werewolf', updates);
+
+      localDayVoteSelection = null;
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error submitting day vote:', err, true);
+      UI.Toast('Gagal mengirim voting: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    await DB.updateGameState(currentRoom.code, 'werewolf', updates);
-
-    localDayVoteSelection = null;
-    isSubmitting = false;
   }
 
   /**
@@ -1570,62 +1623,82 @@ const WerewolfGame = (function () {
   }
 
   async function resolveDayVoting() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
 
-    const state = getGameState(currentRoom);
-    const resolved = resolveDayVotingInternal(state, state.dayVotes || {});
-    await DB.updateGameState(currentRoom.code, 'werewolf', resolved);
+      const state = getGameState(currentRoom);
+      const resolved = resolveDayVotingInternal(state, state.dayVotes || {});
+      await DB.updateGameState(currentRoom.code, 'werewolf', resolved);
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error resolving day voting:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   async function submitHunterShot() {
     if (!currentRoom || !currentPlayer || !localNightSelection || isSubmitting) return;
 
     isSubmitting = true;
-    UI.Sound.gong();
+    try {
+      UI.Sound.gong();
 
-    const state = getGameState(currentRoom);
-    const playerRoles = { ...(state.playerRoles || {}) };
-    const shotTargetId = localNightSelection;
+      const state = getGameState(currentRoom);
+      const playerRoles = { ...(state.playerRoles || {}) };
+      const shotTargetId = localNightSelection;
 
-    if (playerRoles[shotTargetId]) {
-      playerRoles[shotTargetId].isAlive = false;
-      UI.Toast(`💥 Hunter menembak mati ${playerRoles[shotTargetId].name}!`, 'info');
+      if (playerRoles[shotTargetId]) {
+        playerRoles[shotTargetId].isAlive = false;
+        UI.Toast(`💥 Hunter menembak mati ${playerRoles[shotTargetId].name}!`, 'info');
+      }
+
+      const winner = checkWinCondition(playerRoles);
+      const nextStatus = winner ? 'game_over' : 'night';
+      const round = nextStatus === 'night' ? (state.round || 1) + 1 : (state.round || 1);
+
+      await DB.updateGameState(currentRoom.code, 'werewolf', {
+        playerRoles,
+        status: nextStatus,
+        round,
+        hunterPendingDeath: null,
+        winner: winner || null,
+        dayVotes: {},
+        nightActions: {}
+      });
+
+      localNightSelection = null;
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error submitting hunter shot:', err, true);
+      UI.Toast('Gagal menembak: ' + (err.message || err), 'error');
+    } finally {
+      isSubmitting = false;
     }
-
-    const winner = checkWinCondition(playerRoles);
-    const nextStatus = winner ? 'game_over' : 'night';
-    const round = nextStatus === 'night' ? (state.round || 1) + 1 : (state.round || 1);
-
-    await DB.updateGameState(currentRoom.code, 'werewolf', {
-      playerRoles,
-      status: nextStatus,
-      round,
-      hunterPendingDeath: null,
-      winner: winner || null,
-      dayVotes: {},
-      nightActions: {}
-    });
-
-    localNightSelection = null;
-    isSubmitting = false;
   }
 
   async function restartGame() {
-    if (!currentRoom || !currentPlayer?.isHost) return;
-    UI.Sound.click();
+    if (!currentRoom || !currentPlayer?.isHost || isSubmitting) return;
+    isSubmitting = true;
+    try {
+      UI.Sound.click();
 
-    await DB.updateGameState(currentRoom.code, 'werewolf', {
-      status: 'config',
-      round: 1,
-      playerRoles: {},
-      nightActions: {},
-      dayVotes: {},
-      nightReport: null,
-      lastNightSavedDoctorId: null,
-      hunterPendingDeath: null,
-      winner: null
-    });
+      await DB.updateGameState(currentRoom.code, 'werewolf', {
+        status: 'config',
+        round: 1,
+        playerRoles: {},
+        nightActions: {},
+        dayVotes: {},
+        nightReport: null,
+        lastNightSavedDoctorId: null,
+        hunterPendingDeath: null,
+        winner: null
+      });
+    } catch (err) {
+      UI.Logger('WEREWOLF', 'Error restarting game:', err, true);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   function cleanup() {
