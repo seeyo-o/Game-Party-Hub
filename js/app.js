@@ -589,6 +589,38 @@ const App = (function () {
       </div>
     `;
 
+    // Check if dev/admin mode is requested via URL parameter or saved session
+    let isDevOrAdmin = false;
+    try {
+      const urlParams = typeof window !== 'undefined' && window.location ? new URLSearchParams(window.location.search) : null;
+      if (urlParams && (urlParams.has('admin') || urlParams.has('dev'))) {
+        isDevOrAdmin = true;
+        localStorage.setItem('hub_admin_mode', 'true');
+      } else if (typeof localStorage !== 'undefined' && localStorage.getItem('hub_admin_mode') === 'true') {
+        isDevOrAdmin = true;
+      }
+    } catch (e) {}
+
+    const topBarActionHTML = isDevOrAdmin ? `
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-display font-black tracking-wide">
+          🛠️ ADMIN MODE
+        </span>
+        <button 
+          onclick="App.openSettingsModal()" 
+          class="p-2.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 border-2 border-slate-900/10 transition-all active:scale-95 shadow-sm cursor-pointer"
+          title="Pengaturan Database Firebase (Khusus Admin)"
+        >
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+      </div>
+    ` : `
+      <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-display font-bold shadow-xs select-none">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Online Ready</span>
+      </div>
+    `;
+
     const fullHTML = `
       <div class="w-full max-w-5xl mx-auto my-auto py-6">
         <!-- Top App Bar -->
@@ -605,13 +637,7 @@ const App = (function () {
             </div>
           </div>
 
-          <button 
-            onclick="App.openSettingsModal()" 
-            class="p-2.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-600 border-2 border-slate-900/10 transition-all active:scale-95 shadow-sm"
-            title="Pengaturan Database Firebase"
-          >
-            <i data-lucide="settings" class="w-5 h-5"></i>
-          </button>
+          ${topBarActionHTML}
         </div>
 
         <!-- Main Card Container -->
@@ -1572,7 +1598,7 @@ const App = (function () {
 
   /**
    * ==========================================================================
-   * FIREBASE SETTINGS MODAL
+   * FIREBASE SETTINGS MODAL (KHUSUS PENGEMBANG / ADMIN)
    * ==========================================================================
    */
   function openSettingsModal() {
@@ -1580,16 +1606,21 @@ const App = (function () {
 
     const contentHTML = `
       <div class="space-y-4">
-        <p class="font-body text-xs text-slate-500 leading-relaxed">
-          Aplikasi ini dapat langsung dimainkan dalam <b>Mode Demo</b> antar-tab browser, atau hubungkan dengan <b>Firebase Realtime Database</b> milikmu agar teman-teman di Discord bisa bergabung dari mana saja.
-        </p>
+        <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-body space-y-1">
+          <div class="font-display font-bold flex items-center gap-1.5 text-amber-900">
+            <span>🔒 Mode Pengembang / Administrator</span>
+          </div>
+          <p class="text-[11px] leading-relaxed text-amber-800">
+            Pengaturan ini hanya ditujukan untuk pemilik website. Seluruh pemain normal sudah otomatis terhubung ke Firebase bawaan. Mengubah nilai ini hanya memengaruhi browser ini secara lokal.
+          </p>
+        </div>
 
         <div>
           <label class="block font-display font-semibold text-xs text-slate-700 mb-1">Database URL (Wajib untuk Online)</label>
           <input 
             id="cfg-databaseURL" 
             type="text" 
-            placeholder="https://your-project-default-rtdb.firebaseio.com" 
+            placeholder="https://your-project-default-rtdb.asia-southeast1.firebasedatabase.app" 
             value="${currentConfig.databaseURL || ''}"
             class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 font-mono text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500"
           />
@@ -1597,10 +1628,19 @@ const App = (function () {
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block font-display font-semibold text-xs text-slate-700 mb-1">API Key</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="font-display font-semibold text-xs text-slate-700">API Key</label>
+              <button 
+                type="button" 
+                onclick="const f = document.getElementById('cfg-apiKey'); if (f) f.type = f.type === 'password' ? 'text' : 'password';" 
+                class="text-[10px] text-indigo-600 font-bold hover:underline cursor-pointer"
+              >
+                Lihat / Tutup
+              </button>
+            </div>
             <input 
               id="cfg-apiKey" 
-              type="text" 
+              type="password" 
               placeholder="AIzaSy..." 
               value="${currentConfig.apiKey || ''}"
               class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 font-mono text-xs text-slate-800 focus:bg-white focus:outline-none focus:border-indigo-500"
@@ -1619,24 +1659,35 @@ const App = (function () {
         </div>
 
         <div class="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] font-body">
-          💡 <b>Tips Cepat:</b> Di Firebase Console, buat project baru, aktifkan Realtime Database (pilih Start in Test Mode), lalu salin Database URL ke kolom di atas.
+          💡 <b>Kiat Aman:</b> Untuk menutup akses admin dan menyembunyikan ikon ini kembali dari layar depan, klik tombol <b>"Tutup Mode Admin"</b>.
         </div>
       </div>
     `;
 
     const footerHTML = `
-      <button 
-        onclick="App.resetToDemoConfig()" 
-        class="px-4 py-2 rounded-xl text-xs font-display font-semibold text-slate-500 hover:text-slate-700"
-      >
-        Gunakan Demo Saja
-      </button>
-      <button 
-        onclick="App.saveFirebaseSettings()" 
-        class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-bold text-xs shadow"
-      >
-        Simpan & Terapkan
-      </button>
+      <div class="flex items-center justify-between w-full gap-2">
+        <button 
+          onclick="App.exitAdminMode()" 
+          class="px-3.5 py-2 rounded-xl text-xs font-display font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer"
+          title="Sembunyikan tombol pengaturan dari layar depan"
+        >
+          Tutup Mode Admin 🚪
+        </button>
+        <div class="flex items-center gap-2">
+          <button 
+            onclick="App.resetToDemoConfig()" 
+            class="px-3.5 py-2 rounded-xl text-xs font-display font-semibold text-amber-700 hover:bg-amber-50 transition-all cursor-pointer"
+          >
+            Reset ke Demo
+          </button>
+          <button 
+            onclick="App.saveFirebaseSettings()" 
+            class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-bold text-xs shadow transition-all cursor-pointer"
+          >
+            Simpan & Terapkan
+          </button>
+        </div>
+      </div>
     `;
 
     UI.Modal({
@@ -1644,6 +1695,15 @@ const App = (function () {
       content: contentHTML,
       footer: footerHTML
     });
+  }
+
+  function exitAdminMode() {
+    try {
+      localStorage.removeItem('hub_admin_mode');
+    } catch (e) {}
+    UI.closeModal();
+    UI.Toast('Mode Admin ditutup. Tombol pengaturan disembunyikan.', 'info');
+    renderWelcomeView();
   }
 
   function saveFirebaseSettings() {
@@ -1679,6 +1739,7 @@ const App = (function () {
     returnToLobby,
     resetGame,
     openSettingsModal,
+    exitAdminMode,
     saveFirebaseSettings,
     resetToDemoConfig,
     renderLobbyView,
